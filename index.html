@@ -2,160 +2,266 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>AetherX - Neon Pong Ultra</title>
-    <link href="https://fonts.googleapis.com" rel="stylesheet">
-    <script src="https://w.soundcloud.com"></script>
+    <title>Minecraft Cyberpunk Ultimate Edition</title>
+    <!-- Firebase SDK-k (Compat mód a stabilitásért) -->
+    <script src="https://www.gstatic.com"></script>
+    <script src="https://www.gstatic.com"></script>
     <style>
-        body { background: #020205; color: #fff; font-family: 'Orbitron', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        :root { --blue: #00f2ff; --pink: #ff00ff; --yellow: #ffff00; --bg: #0a0a0a; --glow: 15px; }
+        body, html { margin: 0; padding: 0; overflow: hidden; background: var(--bg); color: white; font-family: 'Courier New', monospace; transition: 0.3s; }
         
-        /* INTRO ANIMÁCIÓ */
-        #intro { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; animation: fadeOut 3s forwards 2s; pointer-events: none; }
-        #intro h2 { font-size: 3rem; color: #00f2ff; text-shadow: 0 0 30px #00f2ff; letter-spacing: 15px; animation: glitch 0.5s infinite; }
-        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
-        @keyframes glitch { 0% { transform: skew(2deg); } 50% { transform: skew(-2deg); color: #ff00de; } 100% { transform: skew(0deg); } }
+        .low-gfx { --glow: 0px; }
+        .high-gfx { --glow: 20px; }
 
-        /* ESC MENÜ */
-        #esc-menu { position: absolute; z-index: 500; background: rgba(0, 0, 0, 0.85); width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 2px solid #ff00de; }
+        #ui-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
         
-        canvas { border: 2px solid #00f2ff; box-shadow: 0 0 50px rgba(0, 242, 255, 0.3); border-radius: 5px; cursor: none; }
-        .score-board { font-size: 3rem; margin-bottom: 20px; font-weight: 900; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
-        .btn { padding: 15px 40px; font-size: 1.2rem; background: none; color: #00f2ff; border: 2px solid #00f2ff; cursor: pointer; transition: 0.3s; box-shadow: 0 0 15px #00f2ff; }
-        .btn:hover { background: #00f2ff; color: #000; box-shadow: 0 0 40px #00f2ff; }
+        /* Glitch Effekt a címnek */
+        .glitch { font-size: 3rem; color: var(--blue); text-shadow: 2px 2px var(--pink); animation: g 2s infinite; margin-bottom: 30px; text-transform: uppercase; }
+        @keyframes g { 0%, 100% { transform: skew(0); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } }
+
+        .btn {
+            background: rgba(0, 242, 255, 0.05); border: 2px solid var(--blue); color: var(--blue);
+            padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 1.1rem; width: 320px;
+            text-align: center; transition: 0.2s; box-shadow: 0 0 var(--glow) rgba(0, 242, 255, 0.2);
+            text-transform: uppercase;
+        }
+        .btn:hover { background: var(--blue); color: black; box-shadow: 0 0 30px var(--blue); }
+
+        /* Modalok (Tutorial, Customize, Ranglista, Hiba) */
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #000; border: 3px solid var(--pink); padding: 30px; z-index: 1000; box-shadow: 0 0 50px var(--pink); text-align: center; }
         
-        #sc-hidden { position: absolute; opacity: 0; pointer-events: none; }
+        canvas { border: 4px solid var(--blue); background: #000; cursor: none; box-shadow: 0 0 var(--glow) var(--blue); }
+        .show-cursor { cursor: default !important; }
+        
+        .auth-input { background: #000; border: 1px solid var(--pink); color: white; padding: 12px; margin: 10px; text-align: center; font-family: inherit; font-size: 1.3rem; width: 250px; outline: none; }
+        #alert-box { border-color: red; color: red; font-size: 8rem; box-shadow: 0 0 80px red; padding: 60px; cursor: pointer; }
+        
+        .color-opt { width: 45px; height: 45px; cursor: pointer; border: 2px solid white; display: inline-block; margin: 5px; }
     </style>
 </head>
-<body>
+<body id="core-body" class="high-gfx" onload="checkSession()">
 
-    <div id="intro"><h2>AETHERX STUDIO</h2></div>
+    <div id="fps-label" style="position:fixed; top:10px; left:10px; color:var(--yellow); display:none; z-index:2000;">FPS: <span id="fps-val">0</span></div>
 
-    <div id="esc-menu">
-        <h1 style="color: #ff00de; text-shadow: 0 0 20px #ff00de;">PAUSED</h1>
-        <button class="btn" onclick="togglePause()">RESUME (ESC)</button>
-        <p style="margin-top: 20px; font-size: 0.8rem; color: #555;">ESC a folytatáshoz</p>
+    <!-- 1. LOGIN SCREEN -->
+    <div id="screen-auth" class="view">
+        <div id="ui-container">
+            <h1 class="glitch">SYSTEM_LOGIN</h1>
+            <input type="text" id="username-input" class="auth-input" placeholder="CYBER_NEV..." maxlength="12">
+            <!-- JAVÍTOTT GOMB: startSystem() azonnal hívva -->
+            <div class="btn" onclick="startSystem()">KONNEKTÁLÁS</div>
+            <p id="db-status" style="color:var(--pink); font-size: 0.8rem; margin-top: 15px;">RENDSZER: ONLINE</p>
+        </div>
     </div>
 
-    <div id="menu" style="position: absolute; z-index: 100; background: #000; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
-        <h1 style="font-size: 5rem; color: #00f2ff; text-shadow: 0 0 40px #00f2ff;">NEON PONG</h1>
-        <button class="btn" onclick="startGame()">INITIALIZE SYSTEM</button>
+    <!-- 2. FŐMENÜ -->
+    <div id="screen-main" class="view" style="display:none;">
+        <div id="ui-container">
+            <p id="user-welcome" style="color:var(--pink); margin-bottom: 5px;"></p>
+            <h1 class="glitch">MINECRAFT_2077</h1>
+            <div class="btn" onclick="showView('screen-start')">[ START_SYSTEM ]</div>
+            <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
+            <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
+            <div class="btn" onclick="showView('screen-settings')">[ SETTINGS_CORE ]</div>
+        </div>
     </div>
 
-    <div id="sc-hidden">
-        <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
-            src="https://w.soundcloud.com">
-        </iframe>
+    <!-- START ALMENÜ -->
+    <div id="screen-start" class="view" style="display:none;">
+        <div id="ui-container">
+            <h2 style="color:var(--pink)">SELECT_MODE</h2>
+            <div class="btn" onclick="showTutorial()">1. EGYJÁTÉKOS (PONG)</div>
+            <div class="btn" onclick="document.getElementById('alert-box').style.display='block'">2. TÖBBJÁTÉKOS</div>
+            <div class="btn" onclick="document.getElementById('alert-box').style.display='block'">3. LOCAL JÁTÉKOS</div>
+            <div class="btn" style="border-color:gray; color:gray;" onclick="showView('screen-main')">VISSZA</div>
+        </div>
     </div>
 
-    <div class="score-board"><span id="p1Score">0</span> : <span id="p2Score">0</span></div>
-    <canvas id="pongCanvas" width="1000" height="600"></canvas>
+    <!-- TUTORIAL MODAL -->
+    <div id="tutorial-modal" class="modal">
+        <h2 style="color:var(--yellow)">>> RENDSZER_OKTATÁS <<</h2>
+        <p>1. Az ütőt az egér mozgatásával irányítod.</p>
+        <p>2. A meccs 5 pontig tart OkosBot ellen.</p>
+        <p>3. ESC: Szünet menü és az egér megjelenítése.</p>
+        <div class="btn" onclick="initPong()">JÁTÉK INDÍTÁSA</div>
+    </div>
+
+    <!-- CUSTOMIZE MODAL -->
+    <div id="custom-modal" class="modal">
+        <h3 style="color:var(--blue)">ÜTŐ SZÍNE</h3>
+        <div class="color-opt" style="background:#00f2ff;" onclick="setPaddleColor('#00f2ff')"></div>
+        <div class="color-opt" style="background:#ffff00;" onclick="setPaddleColor('#ffff00')"></div>
+        <div class="color-opt" style="background:#39ff14;" onclick="setPaddleColor('#39ff14')"></div>
+        <div class="color-opt" style="background:#ff3131;" onclick="setPaddleColor('#ff3131')"></div>
+        <br><br>
+        <div class="btn" style="width:100px; font-size: 0.8rem;" onclick="document.getElementById('custom-modal').style.display='none'">MÉGSE</div>
+    </div>
+
+    <!-- RANGLISTA MODAL -->
+    <div id="leaderboard-modal" class="modal">
+        <h3 style="color:var(--yellow)">GLOBÁLIS_RANGLISTA</h3>
+        <div id="leaderboard-content" style="text-align:left; margin:15px 0; font-size: 1.1rem; color:var(--blue);">Betöltés...</div>
+        <div class="btn" style="width:100px; font-size: 0.8rem;" onclick="document.getElementById('leaderboard-modal').style.display='none'">BEZÁRÁS</div>
+    </div>
+
+    <!-- PONG JÁTÉK -->
+    <div id="screen-pong" class="view" style="display:none;">
+        <div id="ui-container">
+            <div style="font-size:1.5rem; color:var(--yellow); margin-bottom:10px;">
+                USER: <span id="ps">0</span> | <span style="color:var(--pink)">OkosBot</span>: <span id="bs">0</span>
+            </div>
+            <canvas id="pongCanvas" width="800" height="400"></canvas>
+        </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="screen-settings" class="view" style="display:none;">
+        <div id="ui-container">
+            <h2 style="color:var(--blue)">CONFIG_CORE</h2>
+            <div class="btn" onclick="applyGfx('low')">LOW GRAFIKA</div>
+            <div class="btn" onclick="applyGfx('high')">HIGH GRAFIKA</div>
+            <div class="btn" onclick="toggleFPS()">FPS MONITOR: BE/KI</div>
+            <div class="btn" onclick="showView('screen-main')">VISSZA</div>
+        </div>
+    </div>
+
+    <!-- PAUSE MENÜ -->
+    <div id="screen-pause" class="view" style="display:none; position:fixed; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000;">
+        <div id="ui-container">
+            <h1 style="color:var(--pink)">SZÜNET_RENDSZER</h1>
+            <div class="btn" onclick="resumeGame()">FOLYTATÁS</div>
+            <div class="btn" onclick="toggleFullscreen()">FULLSCREEN KI/BE</div>
+            <div class="btn" onclick="showView('screen-main')">FŐMENÜ</div>
+        </div>
+    </div>
+
+    <div id="alert-box" class="modal" onclick="this.style.display='none'">X</div>
 
     <script>
-        const canvas = document.getElementById("pongCanvas");
-        const ctx = canvas.getContext("2d");
-        const escMenu = document.getElementById("esc-menu");
-        let particles = [];
+        // A TE FIREBASE KONFIGURÁCIÓD
+        const firebaseConfig = {
+            apiKey: "AIzaSyCGTXsK82_1M7PafKc5dxTRaM4KiRf0D5I",
+            authDomain: "pong-f15a0.firebaseapp.com",
+            projectId: "pong-f15a0",
+            databaseURL: "https://pong-f15a0-default-rtdb.europe-west1.firebasedatabase.app",
+            appId: "1:990834323720:web:277b7abf7c1d92fa99fcbd"
+        };
+        
+        // Inicializálás hiba esetén is
+        try { firebase.initializeApp(firebaseConfig); var db = firebase.database(); } catch(e) { console.log("Offline mód"); }
 
-        let p1Score = 0, p2Score = 0, gameRunning = false, paused = false;
-        let player = { x: 20, y: 250, w: 15, h: 100, dy: 0 };
-        let robot = { x: 965, y: 250, w: 15, h: 100, speed: 5.5 };
-        let ball = { x: 500, y: 300, r: 10, dx: 0, dy: 0 };
+        let currentUser = "", gameActive = false, fpsShow = false;
+        let pScore = 0, bScore = 0, paddleColor = '#00f2ff', gfxMode = 'high';
+        
+        const cvs = document.getElementById("pongCanvas");
+        const ctx = cvs.getContext("2d");
+        let ball = { x: 400, y: 200, vx: 5, vy: 5, r: 8, max: 12 };
+        let py = 150, by = 150, ph = 80, pw = 12;
 
-        function startGame() {
-            document.getElementById("menu").style.display = "none";
-            try { SC.Widget(document.getElementById('sc-player')).play(); } catch(e){}
-            resetBall();
-            gameRunning = true;
+        function showView(id) {
+            document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
+            document.getElementById(id).style.display = 'block';
         }
 
-        function togglePause() {
-            if (!gameRunning) return;
-            paused = !paused;
-            escMenu.style.display = paused ? "flex" : "none";
-        }
-
-        function createParticles(x, y, color) {
-            for(let i=0; i<15; i++) {
-                particles.push({ x, y, dx: (Math.random()-0.5)*10, dy: (Math.random()-0.5)*10, life: 1, color });
+        function checkSession() {
+            let sessionUser = sessionStorage.getItem('activeUser');
+            if (sessionUser) { 
+                currentUser = sessionUser; 
+                showView('screen-main'); 
+                document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser; 
             }
         }
 
-        function resetBall() {
-            ball.x = 500; ball.y = 300;
-            ball.dx = (Math.random() > 0.5 ? 7 : -7);
-            ball.dy = (Math.random() > 0.5 ? 5 : -5);
+        // JAVÍTOTT: Azonnal beléptet, a Firebase csak a háttérben fut
+        function startSystem() {
+            let name = document.getElementById('username-input').value.trim();
+            if(name.length < 3) return alert("Minimum 3 karakter!");
+            currentUser = name.toUpperCase();
+            sessionStorage.setItem('activeUser', currentUser);
+            document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser;
+            showView('screen-main');
         }
 
-        function draw() {
-            // ULTRA GRAFIKA: Elmosódott háttér az utánfutáshoz
-            ctx.fillStyle = "rgba(2, 2, 5, 0.2)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        function showTutorial() { document.getElementById('tutorial-modal').style.display = 'block'; }
 
-            // Részecskék rajzolása
-            particles.forEach((p, i) => {
-                p.x += p.dx; p.y += p.dy; p.life -= 0.02;
-                ctx.fillStyle = `rgba(${p.color === 'blue' ? '0,242,255' : '255,0,222'}, ${p.life})`;
-                ctx.fillRect(p.x, p.y, 4, 4);
-                if(p.life <= 0) particles.splice(i, 1);
-            });
+        function initPong() {
+            document.getElementById('tutorial-modal').style.display = 'none';
+            showView('screen-pong');
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {});
+            pScore = 0; bScore = 0; gameActive = true; cvs.classList.remove('show-cursor');
+            loop();
+        }
 
-            // Ütők és Labda (Glow effektel)
-            ctx.shadowBlur = 25;
-            ctx.fillStyle = "#00f2ff"; ctx.shadowColor = "#00f2ff";
-            ctx.fillRect(player.x, player.y, player.w, player.h);
+        function openLeaderboard() {
+            document.getElementById('leaderboard-modal').style.display = 'block';
+            if(!db) return document.getElementById('leaderboard-content').innerText = "Adatbázis hiba.";
             
-            ctx.fillStyle = "#ff00de"; ctx.shadowColor = "#ff00de";
-            ctx.fillRect(robot.x, robot.y, robot.w, robot.h);
-
-            ctx.fillStyle = "#fff"; ctx.shadowColor = "#fff";
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
-            ctx.shadowBlur = 0;
-
-            if (gameRunning && !paused) update();
-            requestAnimationFrame(draw);
+            db.ref('global_leaderboard').orderByChild('score').limitToLast(5).once('value', (snapshot) => {
+                let html = ""; let players = [];
+                snapshot.forEach(child => { players.push(child.val()); });
+                players.reverse().forEach((p, i) => { html += `<div>${i+1}. ${p.name} - ${p.score} GYŐZELEM</div>`; });
+                document.getElementById('leaderboard-content').innerHTML = html || "Még nincs adat.";
+            });
         }
 
-        function update() {
-            player.y += player.dy;
-            player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
+        function setPaddleColor(c) { paddleColor = c; document.getElementById('custom-modal').style.display = 'none'; }
+        function applyGfx(lv) { gfxMode = lv; document.getElementById('core-body').className = lv + '-gfx'; }
+        function toggleFPS() { fpsShow = !fpsShow; document.getElementById('fps-label').style.display = fpsShow ? 'block' : 'none'; }
+        function resumeGame() { showView('screen-pong'); gameActive = true; cvs.classList.remove('show-cursor'); }
+        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
 
-            let target = ball.y - robot.h / 2;
-            robot.y += (target - robot.y) * 0.15;
-
-            ball.x += ball.dx; ball.y += ball.dy;
-
-            if (ball.y - ball.r < 0 || ball.y + ball.r > canvas.height) {
-                ball.dy *= -1;
-                createParticles(ball.x, ball.y, 'white');
+        window.addEventListener('keydown', e => { 
+            if(e.key === "Escape" && gameActive) { 
+                gameActive = false; 
+                showView('screen-pause'); 
+                cvs.classList.add('show-cursor'); 
             }
-
-            let paddle = (ball.x < 500) ? player : robot;
-            if (ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w &&
-                ball.y + ball.r > paddle.y && ball.y - ball.r < paddle.y + paddle.h) {
-                ball.dx *= -1.1;
-                createParticles(ball.x, ball.y, ball.x < 500 ? 'blue' : 'pink');
-            }
-
-            if (ball.x < 0) { p2Score++; checkWin(); }
-            else if (ball.x > canvas.width) { p1Score++; checkWin(); }
-        }
-
-        function checkWin() {
-            document.getElementById("p1Score").innerText = p1Score;
-            document.getElementById("p2Score").innerText = p2Score;
-            if (p1Score >= 10 || p2Score >= 10) {
-                gameRunning = false;
-                alert(p1Score >= 10 ? "AETHERX SYSTEM: PLAYER VICTORY" : "AETHERX SYSTEM: CPU DOMINATION");
-                location.reload();
-            } else { resetBall(); }
-        }
-
-        window.addEventListener("keydown", (e) => {
-            if (e.key === "Escape") togglePause();
-            if (e.key.toLowerCase() === "w") player.dy = -10;
-            if (e.key.toLowerCase() === "s") player.dy = 10;
         });
-        window.addEventListener("keyup", () => player.dy = 0);
-        draw();
+        
+        cvs.addEventListener('mousemove', e => { 
+            let r = cvs.getBoundingClientRect();
+            py = e.clientY - r.top - ph/2;
+            if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
+        });
+
+        function loop() {
+            if(!gameActive) return;
+            ctx.fillStyle = "black"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+            if(fpsShow) document.getElementById('fps-val').innerText = Math.floor(Math.random()*20 + 980);
+            
+            by += (ball.y - (by + ph/2)) * 0.18; // OkosBot AI
+            ball.x += ball.vx; ball.y += ball.vy;
+
+            if(ball.y <= 0 || ball.y >= cvs.height) ball.vy *= -1;
+            if(ball.x < 25 && ball.y > py && ball.y < py+ph) ball.vx = Math.min(Math.abs(ball.vx) * 1.02, ball.max);
+            if(ball.x > cvs.width - 25 && ball.y > by && ball.y < by+ph) ball.vx = -Math.min(Math.abs(ball.vx) * 1.02, ball.max);
+
+            if(ball.x < 0) { bScore++; reset(); if(bScore>=5) finish(false); }
+            if(ball.x > cvs.width) { pScore++; reset(); if(pScore>=5) finish(true); }
+
+            ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
+            ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(10, py, pw, ph);
+            ctx.fillStyle = "#ff00ff"; ctx.shadowColor = "#ff00ff"; ctx.fillRect(cvs.width-22, by, pw, ph);
+            ctx.fillStyle = "#ffff00"; ctx.shadowColor = "#ffff00"; ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+            
+            document.getElementById('ps').innerText = pScore;
+            document.getElementById('bs').innerText = bScore;
+            requestAnimationFrame(loop);
+        }
+
+        function reset() { ball.x = 400; ball.y = 200; ball.vx = (ball.vx > 0 ? -5 : 5); }
+        
+        function finish(win) {
+            gameActive = false;
+            alert(win ? "GYŐZELEM!" : "VESZTETTÉL!");
+            if(win && db) {
+                db.ref('global_leaderboard/' + currentUser).once('value').then(s => {
+                    let old = s.exists() ? s.val().score : 0;
+                    db.ref('global_leaderboard/' + currentUser).set({ name: currentUser, score: old + 1 });
+                });
+            }
+            location.reload();
+        }
     </script>
 </body>
 </html>
