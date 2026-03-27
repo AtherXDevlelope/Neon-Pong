@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>Neon Pong: Final Edition</title>
+    <link href="https://fonts.googleapis.com" rel="stylesheet">
+    <script src="https://w.soundcloud.com"></script>
+    <style>
+        body {
+            background-color: #050505; color: #fff; font-family: 'Orbitron', sans-serif;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            height: 100vh; margin: 0; overflow: hidden;
+        }
+        #menu {
+            position: absolute; z-index: 100; background: rgba(0, 0, 0, 0.9);
+            width: 100%; height: 100%; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; border: 2px solid #00f2ff;
+        }
+        h1 { font-size: 3.5rem; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; margin-bottom: 30px; }
+        .btn {
+            padding: 20px 60px; font-size: 1.8rem; background: transparent;
+            color: #ff00de; border: 4px solid #ff00de; border-radius: 5px;
+            cursor: pointer; box-shadow: 0 0 20px #ff00de; font-weight: bold;
+            transition: 0.3s;
+        }
+        .btn:hover { background: #ff00de; color: white; box-shadow: 0 0 50px #ff00de; transform: scale(1.05); }
+        canvas { border: 3px solid #00f2ff; box-shadow: 0 0 30px rgba(0, 242, 255, 0.4); border-radius: 15px; }
+        .score-board { font-size: 2.5rem; margin-bottom: 15px; display: flex; gap: 50px; }
+        #sc-container { opacity: 0; position: absolute; pointer-events: none; bottom: 0; }
+    </style>
+</head>
+<body>
+
+    <div id="menu">
+        <h1>NEON PONG</h1>
+        <button class="btn" onclick="startGame()">SYSTEM START</button>
+    </div>
+
+    <!-- Rejtett lejátszó, de engedélyezett autoplay-jel -->
+    <div id="sc-container">
+        <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
+            src="https://w.soundcloud.com">
+        </iframe>
+    </div>
+
+    <div class="score-board">
+        <div style="color: #00f2ff;">P1: <span id="p1Score">0</span></div>
+        <div style="color: #ff00de;">CPU: <span id="p2Score">0</span></div>
+    </div>
+
+    <canvas id="pongCanvas" width="800" height="450"></canvas>
+
+    <script>
+        const canvas = document.getElementById("pongCanvas");
+        const ctx = canvas.getContext("2d");
+        const menu = document.getElementById("menu");
+        
+        let p1Score = 0, p2Score = 0, gameRunning = false;
+        let player = { x: 15, y: 175, w: 12, h: 90, dy: 0 };
+        let robot = { x: 773, y: 175, w: 12, h: 90, speed: 4.8 };
+        let ball = { x: 400, y: 225, r: 8, dx: 0, dy: 0 };
+
+        function startGame() {
+            // 1. AZONNALI INDÍTÁS (BUG FIX)
+            menu.style.display = "none";
+            p1Score = 0; p2Score = 0;
+            updateScore();
+            resetBall();
+            gameRunning = true;
+
+            // 2. ZENE INDÍTÁSA (HIBATŰRŐ MÓDON)
+            try {
+                const widget = SC.Widget(document.getElementById('sc-player'));
+                widget.play();
+                widget.setVolume(50);
+            } catch (e) {
+                console.warn("Zene hiba, de a játék fut tovább.");
+            }
+        }
+
+        function updateScore() {
+            document.getElementById("p1Score").innerText = p1Score;
+            document.getElementById("p2Score").innerText = p2Score;
+        }
+
+        function resetBall() {
+            ball.x = canvas.width / 2;
+            ball.y = canvas.height / 2;
+            ball.dx = (Math.random() > 0.5 ? 6 : -6);
+            ball.dy = (Math.random() > 0.5 ? 4 : -4);
+        }
+
+        function draw() {
+            ctx.fillStyle = "rgba(5, 5, 5, 0.4)";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.shadowBlur = 15;
+            ctx.fillStyle = "#00f2ff"; ctx.shadowColor = "#00f2ff";
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            
+            ctx.fillStyle = "#ff00de"; ctx.shadowColor = "#ff00de";
+            ctx.fillRect(robot.x, robot.y, robot.w, robot.h);
+
+            ctx.shadowBlur = 20; ctx.shadowColor = "#fff";
+            ctx.fillStyle = "#fff";
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
+            
+            ctx.shadowBlur = 0;
+            if (gameRunning) update();
+            requestAnimationFrame(draw);
+        }
+
+        function update() {
+            player.y += player.dy;
+            if (player.y < 0) player.y = 0;
+            if (player.y > canvas.height - player.h) player.y = canvas.height - player.h;
+
+            // Robot AI
+            let target = ball.y - robot.h / 2;
+            robot.y += (target - robot.y) * 0.1;
+
+            ball.x += ball.dx; ball.y += ball.dy;
+
+            if (ball.y - ball.r < 0 || ball.y + ball.r > canvas.height) ball.dy *= -1;
+
+            let paddle = (ball.x < canvas.width / 2) ? player : robot;
+            if (ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w &&
+                ball.y + ball.r > paddle.y && ball.y - ball.r < paddle.y + paddle.h) {
+                ball.dx *= -1.05;
+                let hitPos = (ball.y - (paddle.y + paddle.h/2)) / (paddle.h/2);
+                ball.dy = hitPos * 7;
+            }
+
+            if (ball.x < 0) { p2Score++; checkWin(); }
+            else if (ball.x > canvas.width) { p1Score++; checkWin(); }
+        }
+
+        function checkWin() {
+            updateScore();
+            if (p1Score >= 10 || p2Score >= 10) {
+                gameRunning = false;
+                alert(p1Score >= 10 ? "PLAYER WINS!" : "CPU WINS!");
+                menu.style.display = "flex";
+            } else {
+                resetBall();
+            }
+        }
+
+        document.addEventListener("keydown", (e) => {
+            if (e.key.toLowerCase() === "w") player.dy = -8;
+            if (e.key.toLowerCase() === "s") player.dy = 8;
+        });
+        document.addEventListener("keyup", () => player.dy = 0);
+
+        draw();
+    </script>
+</body>
+</html>
