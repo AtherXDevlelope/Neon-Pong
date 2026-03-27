@@ -2,133 +2,137 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Neon Pong: Final Edition</title>
+    <title>AetherX - Neon Pong Ultra</title>
     <link href="https://fonts.googleapis.com" rel="stylesheet">
     <script src="https://w.soundcloud.com"></script>
     <style>
-        body {
-            background-color: #050505; color: #fff; font-family: 'Orbitron', sans-serif;
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100vh; margin: 0; overflow: hidden;
-        }
-        #menu {
-            position: absolute; z-index: 100; background: rgba(0, 0, 0, 0.9);
-            width: 100%; height: 100%; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; border: 2px solid #00f2ff;
-        }
-        h1 { font-size: 3.5rem; color: #00f2ff; text-shadow: 0 0 20px #00f2ff; margin-bottom: 30px; }
-        .btn {
-            padding: 20px 60px; font-size: 1.8rem; background: transparent;
-            color: #ff00de; border: 4px solid #ff00de; border-radius: 5px;
-            cursor: pointer; box-shadow: 0 0 20px #ff00de; font-weight: bold;
-            transition: 0.3s;
-        }
-        .btn:hover { background: #ff00de; color: white; box-shadow: 0 0 50px #ff00de; transform: scale(1.05); }
-        canvas { border: 3px solid #00f2ff; box-shadow: 0 0 30px rgba(0, 242, 255, 0.4); border-radius: 15px; }
-        .score-board { font-size: 2.5rem; margin-bottom: 15px; display: flex; gap: 50px; }
-        #sc-container { opacity: 0; position: absolute; pointer-events: none; bottom: 0; }
+        body { background: #020205; color: #fff; font-family: 'Orbitron', sans-serif; margin: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; }
+        
+        /* INTRO ANIMÁCIÓ */
+        #intro { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 1000; display: flex; align-items: center; justify-content: center; animation: fadeOut 3s forwards 2s; pointer-events: none; }
+        #intro h2 { font-size: 3rem; color: #00f2ff; text-shadow: 0 0 30px #00f2ff; letter-spacing: 15px; animation: glitch 0.5s infinite; }
+        @keyframes fadeOut { to { opacity: 0; visibility: hidden; } }
+        @keyframes glitch { 0% { transform: skew(2deg); } 50% { transform: skew(-2deg); color: #ff00de; } 100% { transform: skew(0deg); } }
+
+        /* ESC MENÜ */
+        #esc-menu { position: absolute; z-index: 500; background: rgba(0, 0, 0, 0.85); width: 100%; height: 100%; display: none; flex-direction: column; align-items: center; justify-content: center; backdrop-filter: blur(10px); border: 2px solid #ff00de; }
+        
+        canvas { border: 2px solid #00f2ff; box-shadow: 0 0 50px rgba(0, 242, 255, 0.3); border-radius: 5px; cursor: none; }
+        .score-board { font-size: 3rem; margin-bottom: 20px; font-weight: 900; text-shadow: 0 0 15px rgba(255,255,255,0.5); }
+        .btn { padding: 15px 40px; font-size: 1.2rem; background: none; color: #00f2ff; border: 2px solid #00f2ff; cursor: pointer; transition: 0.3s; box-shadow: 0 0 15px #00f2ff; }
+        .btn:hover { background: #00f2ff; color: #000; box-shadow: 0 0 40px #00f2ff; }
+        
+        #sc-hidden { position: absolute; opacity: 0; pointer-events: none; }
     </style>
 </head>
 <body>
 
-    <div id="menu">
-        <h1>NEON PONG</h1>
-        <button class="btn" onclick="startGame()">SYSTEM START</button>
+    <div id="intro"><h2>AETHERX STUDIO</h2></div>
+
+    <div id="esc-menu">
+        <h1 style="color: #ff00de; text-shadow: 0 0 20px #ff00de;">PAUSED</h1>
+        <button class="btn" onclick="togglePause()">RESUME (ESC)</button>
+        <p style="margin-top: 20px; font-size: 0.8rem; color: #555;">ESC a folytatáshoz</p>
     </div>
 
-    <!-- Rejtett lejátszó, de engedélyezett autoplay-jel -->
-    <div id="sc-container">
+    <div id="menu" style="position: absolute; z-index: 100; background: #000; width:100%; height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;">
+        <h1 style="font-size: 5rem; color: #00f2ff; text-shadow: 0 0 40px #00f2ff;">NEON PONG</h1>
+        <button class="btn" onclick="startGame()">INITIALIZE SYSTEM</button>
+    </div>
+
+    <div id="sc-hidden">
         <iframe id="sc-player" width="100%" height="166" scrolling="no" frameborder="no" allow="autoplay" 
             src="https://w.soundcloud.com">
         </iframe>
     </div>
 
-    <div class="score-board">
-        <div style="color: #00f2ff;">P1: <span id="p1Score">0</span></div>
-        <div style="color: #ff00de;">CPU: <span id="p2Score">0</span></div>
-    </div>
-
-    <canvas id="pongCanvas" width="800" height="450"></canvas>
+    <div class="score-board"><span id="p1Score">0</span> : <span id="p2Score">0</span></div>
+    <canvas id="pongCanvas" width="1000" height="600"></canvas>
 
     <script>
         const canvas = document.getElementById("pongCanvas");
         const ctx = canvas.getContext("2d");
-        const menu = document.getElementById("menu");
-        
-        let p1Score = 0, p2Score = 0, gameRunning = false;
-        let player = { x: 15, y: 175, w: 12, h: 90, dy: 0 };
-        let robot = { x: 773, y: 175, w: 12, h: 90, speed: 4.8 };
-        let ball = { x: 400, y: 225, r: 8, dx: 0, dy: 0 };
+        const escMenu = document.getElementById("esc-menu");
+        let particles = [];
+
+        let p1Score = 0, p2Score = 0, gameRunning = false, paused = false;
+        let player = { x: 20, y: 250, w: 15, h: 100, dy: 0 };
+        let robot = { x: 965, y: 250, w: 15, h: 100, speed: 5.5 };
+        let ball = { x: 500, y: 300, r: 10, dx: 0, dy: 0 };
 
         function startGame() {
-            // 1. AZONNALI INDÍTÁS (BUG FIX)
-            menu.style.display = "none";
-            p1Score = 0; p2Score = 0;
-            updateScore();
+            document.getElementById("menu").style.display = "none";
+            try { SC.Widget(document.getElementById('sc-player')).play(); } catch(e){}
             resetBall();
             gameRunning = true;
+        }
 
-            // 2. ZENE INDÍTÁSA (HIBATŰRŐ MÓDON)
-            try {
-                const widget = SC.Widget(document.getElementById('sc-player'));
-                widget.play();
-                widget.setVolume(50);
-            } catch (e) {
-                console.warn("Zene hiba, de a játék fut tovább.");
+        function togglePause() {
+            if (!gameRunning) return;
+            paused = !paused;
+            escMenu.style.display = paused ? "flex" : "none";
+        }
+
+        function createParticles(x, y, color) {
+            for(let i=0; i<15; i++) {
+                particles.push({ x, y, dx: (Math.random()-0.5)*10, dy: (Math.random()-0.5)*10, life: 1, color });
             }
         }
 
-        function updateScore() {
-            document.getElementById("p1Score").innerText = p1Score;
-            document.getElementById("p2Score").innerText = p2Score;
-        }
-
         function resetBall() {
-            ball.x = canvas.width / 2;
-            ball.y = canvas.height / 2;
-            ball.dx = (Math.random() > 0.5 ? 6 : -6);
-            ball.dy = (Math.random() > 0.5 ? 4 : -4);
+            ball.x = 500; ball.y = 300;
+            ball.dx = (Math.random() > 0.5 ? 7 : -7);
+            ball.dy = (Math.random() > 0.5 ? 5 : -5);
         }
 
         function draw() {
-            ctx.fillStyle = "rgba(5, 5, 5, 0.4)";
+            // ULTRA GRAFIKA: Elmosódott háttér az utánfutáshoz
+            ctx.fillStyle = "rgba(2, 2, 5, 0.2)";
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-            ctx.shadowBlur = 15;
+            // Részecskék rajzolása
+            particles.forEach((p, i) => {
+                p.x += p.dx; p.y += p.dy; p.life -= 0.02;
+                ctx.fillStyle = `rgba(${p.color === 'blue' ? '0,242,255' : '255,0,222'}, ${p.life})`;
+                ctx.fillRect(p.x, p.y, 4, 4);
+                if(p.life <= 0) particles.splice(i, 1);
+            });
+
+            // Ütők és Labda (Glow effektel)
+            ctx.shadowBlur = 25;
             ctx.fillStyle = "#00f2ff"; ctx.shadowColor = "#00f2ff";
             ctx.fillRect(player.x, player.y, player.w, player.h);
             
             ctx.fillStyle = "#ff00de"; ctx.shadowColor = "#ff00de";
             ctx.fillRect(robot.x, robot.y, robot.w, robot.h);
 
-            ctx.shadowBlur = 20; ctx.shadowColor = "#fff";
-            ctx.fillStyle = "#fff";
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI * 2); ctx.fill();
-            
+            ctx.fillStyle = "#fff"; ctx.shadowColor = "#fff";
+            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
             ctx.shadowBlur = 0;
-            if (gameRunning) update();
+
+            if (gameRunning && !paused) update();
             requestAnimationFrame(draw);
         }
 
         function update() {
             player.y += player.dy;
-            if (player.y < 0) player.y = 0;
-            if (player.y > canvas.height - player.h) player.y = canvas.height - player.h;
+            player.y = Math.max(0, Math.min(canvas.height - player.h, player.y));
 
-            // Robot AI
             let target = ball.y - robot.h / 2;
-            robot.y += (target - robot.y) * 0.1;
+            robot.y += (target - robot.y) * 0.15;
 
             ball.x += ball.dx; ball.y += ball.dy;
 
-            if (ball.y - ball.r < 0 || ball.y + ball.r > canvas.height) ball.dy *= -1;
+            if (ball.y - ball.r < 0 || ball.y + ball.r > canvas.height) {
+                ball.dy *= -1;
+                createParticles(ball.x, ball.y, 'white');
+            }
 
-            let paddle = (ball.x < canvas.width / 2) ? player : robot;
+            let paddle = (ball.x < 500) ? player : robot;
             if (ball.x + ball.r > paddle.x && ball.x - ball.r < paddle.x + paddle.w &&
                 ball.y + ball.r > paddle.y && ball.y - ball.r < paddle.y + paddle.h) {
-                ball.dx *= -1.05;
-                let hitPos = (ball.y - (paddle.y + paddle.h/2)) / (paddle.h/2);
-                ball.dy = hitPos * 7;
+                ball.dx *= -1.1;
+                createParticles(ball.x, ball.y, ball.x < 500 ? 'blue' : 'pink');
             }
 
             if (ball.x < 0) { p2Score++; checkWin(); }
@@ -136,22 +140,21 @@
         }
 
         function checkWin() {
-            updateScore();
+            document.getElementById("p1Score").innerText = p1Score;
+            document.getElementById("p2Score").innerText = p2Score;
             if (p1Score >= 10 || p2Score >= 10) {
                 gameRunning = false;
-                alert(p1Score >= 10 ? "PLAYER WINS!" : "CPU WINS!");
-                menu.style.display = "flex";
-            } else {
-                resetBall();
-            }
+                alert(p1Score >= 10 ? "AETHERX SYSTEM: PLAYER VICTORY" : "AETHERX SYSTEM: CPU DOMINATION");
+                location.reload();
+            } else { resetBall(); }
         }
 
-        document.addEventListener("keydown", (e) => {
-            if (e.key.toLowerCase() === "w") player.dy = -8;
-            if (e.key.toLowerCase() === "s") player.dy = 8;
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "Escape") togglePause();
+            if (e.key.toLowerCase() === "w") player.dy = -10;
+            if (e.key.toLowerCase() === "s") player.dy = 10;
         });
-        document.addEventListener("keyup", () => player.dy = 0);
-
+        window.addEventListener("keyup", () => player.dy = 0);
         draw();
     </script>
 </body>
