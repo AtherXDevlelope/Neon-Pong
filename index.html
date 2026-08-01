@@ -34,7 +34,7 @@
         .auth-input { background: #000; border: 1px solid var(--pink); color: white; padding: 12px; margin: 10px; text-align: center; font-family: inherit; font-size: 1.3rem; width: 250px; outline: none; transition: 0.3s; }
         .auth-input:focus { box-shadow: 0 0 15px var(--pink); }
         
-        .color-opt { width: 45px; height: 45px; cursor: pointer; border: 2px solid white; display: inline-block; margin: 5px; transition: 0.2s; }
+        .color-opt { width: 35px; height: 35px; cursor: pointer; border: 2px solid white; display: inline-block; margin: 4px; transition: 0.2s; }
         .color-opt:hover { transform: scale(1.2); }
         
         #hud { position: absolute; top: 20px; width: 100%; text-align: center; font-size: 2rem; color: var(--yellow); z-index: 5; font-weight: bold; pointer-events: none; }
@@ -95,11 +95,22 @@
     <!-- CUSTOMIZE MODAL -->
     <div id="custom-modal" class="modal">
         <h3 style="color:var(--blue)">ÜTŐ SZÍNE</h3>
-        <div class="color-opt" style="background:#00f2ff;" onclick="setPaddleColor('#00f2ff')"></div>
-        <div class="color-opt" style="background:#ffff00;" onclick="setPaddleColor('#ffff00')"></div>
-        <div class="color-opt" style="background:#39ff14;" onclick="setPaddleColor('#39ff14')"></div>
-        <div class="color-opt" style="background:#ff3131;" onclick="setPaddleColor('#ff3131')"></div>
-        <br><br>
+        <div style="max-width: 220px; margin: 0 auto;">
+            <div class="color-opt" style="background:#00f2ff;" onclick="setPaddleColor('#00f2ff')"></div>
+            <div class="color-opt" style="background:#ffff00;" onclick="setPaddleColor('#ffff00')"></div>
+            <div class="color-opt" style="background:#39ff14;" onclick="setPaddleColor('#39ff14')"></div>
+            <div class="color-opt" style="background:#ff3131;" onclick="setPaddleColor('#ff3131')"></div>
+            <div class="color-opt" style="background:#ff00ff;" onclick="setPaddleColor('#ff00ff')"></div>
+            <div class="color-opt" style="background:#ff8800;" onclick="setPaddleColor('#ff8800')"></div>
+            <div class="color-opt" style="background:#9400d3;" onclick="setPaddleColor('#9400d3')"></div>
+            <div class="color-opt" style="background:#ffffff;" onclick="setPaddleColor('#ffffff')"></div>
+            <div class="color-opt" style="background:#00ffcc;" onclick="setPaddleColor('#00ffcc')"></div>
+            <div class="color-opt" style="background:#ff1493;" onclick="setPaddleColor('#ff1493')"></div>
+        </div>
+        <div style="margin: 15px 0;">
+            <label style="font-size: 0.9rem; color:var(--yellow);">Egyedi szín:</label><br>
+            <input type="color" id="custom-color-picker" value="#00f2ff" onchange="setPaddleColor(this.value)" style="margin-top: 5px; width: 60px; height: 35px; background: transparent; border: 2px solid var(--blue); cursor: pointer;">
+        </div>
         <div class="btn" style="border-color:gray; color:gray; box-shadow:none;" onclick="document.getElementById('custom-modal').style.display='none'">MENTÉS ÉS BEZÁRÁS</div>
     </div>
 
@@ -209,7 +220,10 @@
                 db.ref('users/' + currentUser).once('value').then(snapshot => {
                     if(snapshot.exists()) {
                         let data = snapshot.val();
-                        if(data.paddleColor) paddleColor = data.paddleColor;
+                        if(data.paddleColor) {
+                            paddleColor = data.paddleColor;
+                            document.getElementById('custom-color-picker').value = paddleColor;
+                        }
                     } else {
                         db.ref('users/' + currentUser).set({
                             name: currentUser,
@@ -229,6 +243,7 @@
                 db.ref('users/' + currentUser).once('value').then(snapshot => {
                     if(snapshot.exists() && snapshot.val().paddleColor) {
                         paddleColor = snapshot.val().paddleColor;
+                        document.getElementById('custom-color-picker').value = paddleColor;
                     }
                 });
             }
@@ -244,7 +259,7 @@
 
         function setPaddleColor(c) { 
             paddleColor = c; 
-            document.getElementById('custom-modal').style.display = 'none';
+            document.getElementById('custom-color-picker').value = c;
             if(db && currentUser) {
                 db.ref('users/' + currentUser).update({ paddleColor: paddleColor });
             }
