@@ -244,9 +244,8 @@
     </div>
 
     <!-- HÁTTÉRZENE LEJÁTSZÓ TAG A FŐMENÜHÖZ -->
-    <!-- AZ SRC ALAPÉRTELMEZETTEN AZ ÚJ ZENE -->
     <audio id="hatterZene">
-        <source src="fomenu.mp3" type="audio/mpeg">
+        <source src="fomenu.MP3" type="audio/mpeg">
     </audio>
 
     <script>
@@ -282,19 +281,16 @@
         let publicChatRef = null;
         let privateChatRef = null;
 
-        // Beépített WebRTC Voice Chat változók barátok közt
         let localStream = null;
         let peerConnection = null;
         let activeVoiceFriend = null;
         let voiceSignalRef = null;
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
 
-        // Globális tömb a meccs közbeni zenei rétegeknek (EZ A JAVÍTÁS RÉSZE)
         let matchAudioLayers = [];
 
-        // Hálózati optimalizálás & simítás (Throttling & LERP)
         let lastNetworkUpdate = 0;
-        const networkInterval = 50; // 20 frissítés/mp
+        const networkInterval = 50;
 
         let currentWave = 1;
         let waveScore = 0;
@@ -1052,17 +1048,14 @@
             cvs.classList.remove('show-cursor');
             resetBall();
 
-            // ==========================================
-            // JAVÍTOTT ZENEI RENDSZER A MECCSHEZ:
-            // ==========================================
-            // Először leállítjuk az esetlegesen már futó rétegeket
             matchAudioLayers.forEach(audio => {
                 audio.pause();
                 audio.currentTime = 0;
             });
             matchAudioLayers = [];
 
-            const zeneFajlok = ['Chaos_2.MP3', 'Curse_2.MP3', 'Exploler_2.MP3', 'Mossy_2.MP3', 'rose_2.MP3'];
+            // Pontos, nagybetűs kiterjesztésű fájlnevek a GitHubod alapján:
+            const zeneFajlok = ['chaos.MP3', 'curse.MP3', 'Exploler.MP3', 'mossy.MP3', 'rose.MP3'];
             
             zeneFajlok.forEach(fajlNev => {
                 let audioLayer = new Audio(fajlNev);
@@ -1075,7 +1068,6 @@
                 
                 matchAudioLayers.push(audioLayer);
             });
-            // ==========================================
 
             requestAnimationFrame(loop);
         }
@@ -1088,7 +1080,6 @@
             }
             if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
             
-            // Meccs közbeni zenék leállítása
             matchAudioLayers.forEach(audio => {
                 audio.pause();
                 audio.currentTime = 0;
@@ -1517,8 +1508,8 @@
         }
 
         const zene = document.getElementById('hatterZene');
-        // Itt frissítettem a listát, hogy az új zenéd ('fomenu.mp3') legyen benne
-        const zeneLista = ['fomenu.mp3', 'Lobby2.MP3', 'redstone.MP3'];
+        // Itt is a pontos, nagybetűs kiterjesztésű fájlnevek szerepelnek:
+        const zeneLista = ['fomenu.MP3', 'fomenu2.MP3'];
         let aktualisZene = 0;
         let musicMutedManually = false;
 
