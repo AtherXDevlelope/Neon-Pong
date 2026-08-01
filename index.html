@@ -245,7 +245,7 @@
     </div>
 
     <!-- HÁTTÉRZENE LEJÁTSZÓ TAG A FŐMENÜHÖZ -->
-    <audio id="hatterZene">
+    <audio id="hatterZene" loop>
         <source src="fomenu.MP3" type="audio/mpeg">
     </audio>
 
@@ -287,8 +287,6 @@
         let activeVoiceFriend = null;
         let voiceSignalRef = null;
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
-
-        let matchAudioLayers = [];
 
         let lastNetworkUpdate = 0;
         const networkInterval = 50;
@@ -1049,26 +1047,6 @@
             cvs.classList.remove('show-cursor');
             resetBall();
 
-            matchAudioLayers.forEach(audio => {
-                audio.pause();
-                audio.currentTime = 0;
-            });
-            matchAudioLayers = [];
-
-            const zeneFajlok = ['chaos.MP3', 'curse.MP3', 'Exploler.MP3', 'mossy.MP3', 'rose.MP3'];
-            
-            zeneFajlok.forEach(fajlNev => {
-                let audioLayer = new Audio(fajlNev);
-                audioLayer.loop = true;
-                audioLayer.volume = 0.6;
-                
-                audioLayer.play().catch(err => {
-                    console.error(`⚠️ Nem sikerült lejátszani a(z) ${fajlNev} fájlt! Ok:`, err.message);
-                });
-                
-                matchAudioLayers.push(audioLayer);
-            });
-
             requestAnimationFrame(loop);
         }
 
@@ -1080,12 +1058,6 @@
             }
             if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
             
-            matchAudioLayers.forEach(audio => {
-                audio.pause();
-                audio.currentTime = 0;
-            });
-            matchAudioLayers = [];
-
             showView('screen-main');
         }
 
@@ -1104,7 +1076,7 @@
         function resumeGame() { 
             showView('screen-pong'); 
             gameActive = true; 
-            cvs.classList.remove('show-cursor'); 
+            cvs.classList.add('show-cursor'); 
             requestAnimationFrame(loop);
         }
 
@@ -1522,7 +1494,7 @@
             if (zene.paused && !musicMutedManually) {
                 zene.volume = 0.5;
                 zene.play().catch(err => {
-                    console.log("Főmenü zene blokkolva, kattints az oldalra:", err);
+                    console.log("Főmenü zene blokkolva a böngésző általi autoplay policy miatt. Interakció szükséges.");
                 });
             }
         }
