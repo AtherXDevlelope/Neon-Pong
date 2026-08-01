@@ -74,6 +74,7 @@
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
             <div class="btn" onclick="openPublicChat()" style="border-color: #39ff14; color: #39ff14;">[ PUBLIKUS CHAT ]</div>
             <div class="btn" id="gfx-btn" onclick="toggleGraphics()" style="border-color: #ff8800; color: #ff8800;">[ GRAFIKA: MAGAS ]</div>
+            <div class="btn" id="admin-menu-btn" onclick="openAdminPanel()" style="display:none; border-color: red; color: red; box-shadow: 0 0 15px red;">[ ⚡ ADMIN PANEL ]</div>
             <div class="btn" style="border-color: red; color: red;" onclick="logout()">[ KIJELENTKEZÉS ]</div>
         </div>
     </div>
@@ -89,6 +90,21 @@
             <div class="btn" onclick="showTutorial('local')">5. LOCAL JÁTÉKOS (P1 vs P2)</div>
             <div class="btn" style="border-color:gray; color:gray; box-shadow: none;" onclick="showView('screen-main')">VISSZA</div>
         </div>
+    </div>
+
+    <!-- ADMIN PANEL MODAL -->
+    <div id="admin-modal" class="modal" style="max-width: 600px;">
+        <h3 style="color:red;" class="glitch">⚡ ADMIN PANEL (AetherXReal)</h3>
+        <p style="font-size:0.9rem; color:var(--blue); margin-bottom: 15px;">Rendszerszintű kezelőfelület</p>
+        <div style="max-height: 250px; overflow-y: auto; text-align: left; border: 1px solid red; padding: 10px; margin-bottom: 15px; background: rgba(50,0,0,0.3);">
+            <p style="color:var(--yellow); font-weight:bold; margin-top:0;">Összes regisztrált felhasználó / játékos:</p>
+            <div id="admin-users-list">Betöltés...</div>
+        </div>
+        <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+            <div class="btn" style="width: auto; padding: 8px 15px; font-size: 0.9rem; border-color: red; color: red;" onclick="adminGiveCoinsAll()">Mindenkinek +1000 Coin</div>
+            <div class="btn" style="width: auto; padding: 8px 15px; font-size: 0.9rem; border-color: var(--yellow); color: var(--yellow);" onclick="loadAdminPanel()">Frissítés</div>
+        </div>
+        <div class="btn" style="border-color:gray; color:gray; box-shadow:none; width: 100%; margin: 0;" onclick="document.getElementById('admin-modal').style.display='none'">BEZÁRÁS</div>
     </div>
 
     <!-- SHOP MODAL -->
@@ -127,7 +143,7 @@
 
     <!-- BARÁTOK MODAL -->
     <div id="friends-modal" class="modal">
-        <h3 style="color:var(--yellow)" class="glitch">BARÁTOK & PÁRBAJ</h3>
+        <h3 style="color:var(--yellow)" class="glitch">BARÁTOK & VOICE CHAT</h3>
         <div style="margin-bottom: 15px;">
             <input type="text" id="add-friend-input" class="friend-input" placeholder="Új barát neve..." maxlength="12">
             <div class="btn" style="width: auto; display: inline-block; padding: 8px 15px; font-size: 0.9rem; margin: 0;" onclick="sendFriendRequest()">HOZZÁADÁS</div>
@@ -210,6 +226,8 @@
         <div id="hud">
             <span id="hud-content">P1: 0 | P2: 0</span>
             <div style="font-size: 1rem; color: gray; margin-top: 5px;">[ ESC - SZÜNET ]</div>
+            <!-- VOICE CHAT HUD JELZŐ -->
+            <div id="voice-hud-indicator" style="font-size: 0.9rem; color: #39ff14; margin-top: 3px; display:none;">🎤 VOICE CHAT AKTÍV</div>
         </div>
         <canvas id="pongCanvas"></canvas>
     </div>
@@ -219,6 +237,7 @@
         <div id="ui-container">
             <h1 style="color:var(--pink); text-shadow: 0 0 15px var(--pink);">SZÜNET_RENDSZER</h1>
             <div class="btn" onclick="resumeGame()">FOLYTATÁS</div>
+            <div class="btn" id="pause-music-btn" onclick="toggleMusicFromPause()">ZENE: BE</div>
             <div class="btn" onclick="toggleFullscreen()">FULLSCREEN KI/BE</div>
             <div class="btn" onclick="quitGame()">KILÉPÉS A FŐMENÜBE</div>
         </div>
@@ -262,6 +281,13 @@
         let publicChatRef = null;
         let privateChatRef = null;
 
+        // Beépített WebRTC Voice Chat változók barátok közt
+        let localStream = null;
+        let peerConnection = null;
+        let activeVoiceFriend = null;
+        let voiceSignalRef = null;
+        const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
         // Hálózati optimalizálás & simítás (Throttling & LERP)
         let lastNetworkUpdate = 0;
         const networkInterval = 50; // 20 frissítés/mp
@@ -300,7 +326,7 @@
             document.getElementById(id).style.display = 'block';
             if(id !== 'screen-pong' && id !== 'screen-pause') {
                 document.getElementById('ui-container').style.display = 'flex';
-                zeneInditas(); // Zene indítása lobbyban
+                if (!musicMutedManually) zeneInditas(); // Zene indítása lobbyban, ha nincs kézzel némítva
             } else {
                 zeneLeallitas(); // Zene leállítása játék közben
             }
@@ -345,9 +371,12 @@
         function startSystem() {
             let name = document.getElementById('username-input').value.trim();
             if(name.length < 3) return alert("Minimum 3 karakter!");
-            currentUser = name.toUpperCase();
+            currentUser = name;
             localStorage.setItem('activeUser', currentUser);
             
+            // Ellenőrzés, hogy admin-e (AetherXReal)
+            checkAdminPrivileges();
+
             if(db) {
                 let userRef = db.ref('users/' + currentUser);
                 userRef.update({
@@ -372,6 +401,8 @@
         }
 
         function loadUserDataLocallyOrCloud() {
+            checkAdminPrivileges();
+
             if(db) {
                 let userRef = db.ref('users/' + currentUser);
                 userRef.update({ status: 'online' });
@@ -401,6 +432,74 @@
             }
             document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser;
             showView('screen-main');
+        }
+
+        function checkAdminPrivileges() {
+            if (currentUser === "AetherXReal") {
+                document.getElementById('admin-menu-btn').style.display = 'block';
+            } else {
+                document.getElementById('admin-menu-btn').style.display = 'none';
+            }
+        }
+
+        function openAdminPanel() {
+            if (currentUser !== "AetherXReal") return alert("Nincs admin jogosultságod!");
+            document.getElementById('admin-modal').style.display = 'block';
+            loadAdminPanel();
+        }
+
+        function loadAdminPanel() {
+            let container = document.getElementById('admin-users-list');
+            container.innerHTML = "Felhasználók lekérdezése...";
+            if(!db) return container.innerHTML = "Adatbázis offline.";
+
+            db.ref('users').once('value').then(snap => {
+                if(!snap.exists()) {
+                    container.innerHTML = "Nincsenek regisztrált felhasználók.";
+                    return;
+                }
+                container.innerHTML = "";
+                snap.forEach(child => {
+                    let u = child.val();
+                    let div = document.createElement('div');
+                    div.style.cssText = "display: flex; justify-content: space-between; align-items: center; border-bottom: 1px dashed #555; padding: 5px 0;";
+                    div.innerHTML = `<span><b>${u.name}</b> (Coin: ${u.coins || 500}, Status: <span style="color:${u.status === 'online' ? '#39ff14':'gray'}">${u.status || 'offline'}</span>)</span>`;
+                    
+                    let giveBtn = document.createElement('div');
+                    giveBtn.className = "btn";
+                    giveBtn.style.cssText = "width: auto; padding: 3px 8px; font-size: 0.75rem; margin: 0; border-color: var(--yellow); color: var(--yellow);";
+                    giveBtn.innerText = "+5000 Coin";
+                    giveBtn.onclick = () => adminGiveCoinsUser(u.name);
+                    
+                    div.appendChild(giveBtn);
+                    container.appendChild(div);
+                });
+            });
+        }
+
+        function adminGiveCoinsUser(targetName) {
+            db.ref('users/' + targetName).once('value').then(snap => {
+                if(snap.exists()) {
+                    let current = snap.val().coins || 500;
+                    db.ref('users/' + targetName).update({ coins: current + 5000 });
+                    alert(`Sikeresen adtál 5000 coint ${targetName} felhasználónak!`);
+                    loadAdminPanel();
+                }
+            });
+        }
+
+        function adminGiveCoinsAll() {
+            db.ref('users').once('value').then(snap => {
+                if(snap.exists()) {
+                    snap.forEach(child => {
+                        let uName = child.key;
+                        let current = child.val().coins || 500;
+                        db.ref('users/' + uName).update({ coins: current + 1000 });
+                    });
+                    alert("Minden felhasználó kapott +1000 coint!");
+                    loadAdminPanel();
+                }
+            });
         }
 
         function logout() {
@@ -565,7 +664,7 @@
         }
 
         function sendFriendRequest() {
-            let friendName = document.getElementById('add-friend-input').value.trim().toUpperCase();
+            let friendName = document.getElementById('add-friend-input').value.trim();
             if(!friendName || friendName === currentUser) return alert("Érvénytelen név!");
             
             db.ref('users/' + friendName).once('value').then(snap => {
@@ -614,7 +713,14 @@
                         chatBtn.onclick = () => openPrivateChat(friendName);
                         btnContainer.appendChild(chatBtn);
 
-                        if(isOnline) {
+                        if (isOnline) {
+                            let voiceBtn = document.createElement('div');
+                            voiceBtn.className = "btn";
+                            voiceBtn.style.cssText = `width: auto; padding: 4px 10px; font-size: 0.8rem; margin: 0; border-color: ${activeVoiceFriend === friendName ? 'red':'#39ff14'}; color: ${activeVoiceFriend === friendName ? 'red':'#39ff14'};`;
+                            voiceBtn.innerText = activeVoiceFriend === friendName ? "VOICE LEÁLLÍT" : "🎤 VOICE";
+                            voiceBtn.onclick = () => toggleVoiceChat(friendName);
+                            btnContainer.appendChild(voiceBtn);
+
                             let duelBtn = document.createElement('div');
                             duelBtn.className = "btn";
                             duelBtn.style.cssText = "width: auto; padding: 4px 10px; font-size: 0.8rem; margin: 0; border-color: var(--yellow); color: var(--yellow);";
@@ -627,6 +733,149 @@
                     });
                 });
             });
+        }
+
+        // ==========================================
+        // BEÉPÍTETT VOICE CHAT (WebRTC P2P)
+        // ==========================================
+        async function toggleVoiceChat(friendName) {
+            if (activeVoiceFriend === friendName) {
+                stopVoiceChat();
+                alert("Voice chat leállítva.");
+                loadFriendsList();
+                return;
+            }
+
+            if (activeVoiceFriend) {
+                stopVoiceChat();
+            }
+
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                activeVoiceFriend = friendName;
+                document.getElementById('voice-hud-indicator').style.display = 'block';
+
+                let callKey = [currentUser, friendName].sort().join('_');
+                voiceSignalRef = db.ref('voice_signals/' + callKey);
+
+                peerConnection = new RTCPeerConnection(rtcConfig);
+                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                peerConnection.ontrack = event => {
+                    let remoteAudio = document.createElement('audio');
+                    remoteAudio.srcObject = event.streams[0];
+                    remoteAudio.autoplay = true;
+                    document.body.appendChild(remoteAudio);
+                };
+
+                peerConnection.onicecandidate = event => {
+                    if (event.candidate) {
+                        voiceSignalRef.child('candidates').push(JSON.stringify(event.candidate));
+                    }
+                };
+
+                // Ha én hívom
+                voiceSignalRef.remove().then(async () => {
+                    let offer = await peerConnection.createOffer();
+                    await peerConnection.setLocalDescription(offer);
+                    voiceSignalRef.child('offer').set({ sender: currentUser, sdp: JSON.stringify(offer) });
+                });
+
+                // Figyelés válaszra és jelzésekre
+                voiceSignalRef.child('answer').on('value', async snap => {
+                    let ans = snap.val();
+                    if (ans && ans.sender !== currentUser && !peerConnection.currentRemoteDescription) {
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(ans.sdp)));
+                    }
+                });
+
+                voiceSignalRef.child('candidates').on('child_added', async snap => {
+                    let candData = snap.val();
+                    if (candData && peerConnection) {
+                        try {
+                            await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candData)));
+                        } catch(e){}
+                    }
+                });
+
+                alert(`Voice chat elindítva ${friendName} felé!`);
+                loadFriendsList();
+
+            } catch (err) {
+                alert("Nem sikerült elérni a mikrofont: " + err.message);
+            }
+        }
+
+        // Fogadó oldal ellenőrzése háttérben
+        function listenForIncomingVoiceCalls() {
+            if (!db || !currentUser) return;
+            // Egyszerűsített automatikus figyelés a barátok hívásaira
+            db.ref('voice_signals').on('child_added', async snap => {
+                let callKey = snap.key;
+                if (callKey && callKey.includes(currentUser)) {
+                    let data = snap.val();
+                    if (data && data.offer && data.offer.sender !== currentUser && !activeVoiceFriend) {
+                        let caller = data.offer.sender;
+                        if (confirm(`${caller} voice chatre hív. Elfogadod?`)) {
+                            activeVoiceFriend = caller;
+                            document.getElementById('voice-hud-indicator').style.display = 'block';
+                            voiceSignalRef = db.ref('voice_signals/' + callKey);
+
+                            try {
+                                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+                                peerConnection = new RTCPeerConnection(rtcConfig);
+                                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+
+                                peerConnection.ontrack = event => {
+                                    let remoteAudio = document.createElement('audio');
+                                    remoteAudio.srcObject = event.streams[0];
+                                    remoteAudio.autoplay = true;
+                                    document.body.appendChild(remoteAudio);
+                                };
+
+                                peerConnection.onicecandidate = event => {
+                                    if (event.candidate) {
+                                        voiceSignalRef.child('candidates').push(JSON.stringify(event.candidate));
+                                    }
+                                };
+
+                                await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.offer.sdp)));
+                                let answer = await peerConnection.createAnswer();
+                                await peerConnection.setLocalDescription(answer);
+                                voiceSignalRef.child('answer').set({ sender: currentUser, sdp: JSON.stringify(answer) });
+
+                                voiceSignalRef.child('candidates').on('child_added', async snapC => {
+                                    let candData = snapC.val();
+                                    if (candData && peerConnection) {
+                                        try {
+                                            await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candData)));
+                                        } catch(e){}
+                                    }
+                                });
+                            } catch(e) {
+                                alert("Mikrofon hiba: " + e.message);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function stopVoiceChat() {
+            if (localStream) {
+                localStream.getTracks().forEach(track => track.stop());
+                localStream = null;
+            }
+            if (peerConnection) {
+                peerConnection.close();
+                peerConnection = null;
+            }
+            if (voiceSignalRef) {
+                voiceSignalRef.remove();
+                voiceSignalRef = null;
+            }
+            activeVoiceFriend = null;
+            document.getElementById('voice-hud-indicator').style.display = 'none';
         }
 
         function sendDuelInviteTo(friendName) {
@@ -884,8 +1133,16 @@
             });
         }
 
-        function resumeGame() { showView('screen-pong'); gameActive = true; cvs.classList.remove('show-cursor'); }
-        function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
+        function resumeGame() { 
+            showView('screen-pong'); 
+            gameActive = true; 
+            cvs.classList.remove('show-cursor'); 
+        }
+
+        function toggleFullscreen() { 
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen(); 
+            else document.exitFullscreen(); 
+        }
 
         window.addEventListener('keydown', e => { 
             if(e.key === "Escape" && gameActive) { 
@@ -935,7 +1192,8 @@
                 lastTime = nowTime;
             }
 
-            ctx.fillStyle = "black"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.fillStyle = "black"; 
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
             
             let nowTimeMs = Date.now();
             let shouldSync = (nowTimeMs - lastNetworkUpdate > networkInterval);
@@ -1051,41 +1309,66 @@
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             if (activeGameMode === 'solo_boss') {
-                ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py, pw, ph);
+                ctx.fillStyle = paddleColor; 
+                ctx.shadowColor = paddleColor; 
+                ctx.fillRect(30, py, pw, ph);
                 
                 let bossColor = (currentWave === 15 && bossStopperActive) ? "#ff3131" : "#ff00ff";
-                ctx.fillStyle = bossColor; ctx.shadowColor = bossColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                ctx.fillStyle = bossColor; 
+                ctx.shadowColor = bossColor; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 let stopperStatusText = (currentWave === 15) ? (bossStopperActive ? " | <span style='color:red'>🛑 STOPPER AKTÍV!</span>" : " | 🛑 COOLDOWN") : "";
                 document.getElementById('hud-content').innerHTML = `SOLO WAVE: <span style="color:var(--blue)">${currentWave}/15</span> | PONT: <span style="color:var(--yellow)">${waveScore}/3</span> | ÉLET: <span style="color:red">${coopLives}</span>${stopperStatusText}`;
             } 
             else if (activeGameMode === 'coop_boss') {
-                ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py1, pw, ph);
-                ctx.fillStyle = "#ff00ff"; ctx.shadowColor = "#ff00ff"; ctx.fillRect(60, py2, pw, ph);
-                ctx.fillStyle = "#ff3131"; ctx.shadowColor = "#ff3131"; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                ctx.fillStyle = paddleColor; 
+                ctx.shadowColor = paddleColor; 
+                ctx.fillRect(30, py1, pw, ph);
+                
+                ctx.fillStyle = "#ff00ff"; 
+                ctx.shadowColor = "#ff00ff"; 
+                ctx.fillRect(60, py2, pw, ph);
+                
+                ctx.fillStyle = "#ff3131"; 
+                ctx.shadowColor = "#ff3131"; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 document.getElementById('hud-content').innerHTML = `WAVE: <span style="color:var(--blue)">${currentWave}/15</span> | BOSS PONT: <span style="color:var(--yellow)">${waveScore}/3</span> | ÉLET: <span style="color:red">${coopLives}</span>`;
             } else {
                 let p1DrawColor = paddleColor;
                 let p2DrawColor = "#ff00ff";
-                ctx.fillStyle = p1DrawColor; ctx.shadowColor = p1DrawColor; ctx.fillRect(30, py, pw, ph);
-                ctx.fillStyle = p2DrawColor; ctx.shadowColor = p2DrawColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                
+                ctx.fillStyle = p1DrawColor; 
+                ctx.shadowColor = p1DrawColor; 
+                ctx.fillRect(30, py, pw, ph);
+                
+                ctx.fillStyle = p2DrawColor; 
+                ctx.shadowColor = p2DrawColor; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 document.getElementById('hud-content').innerHTML = `P1: ${pScore} | P2: ${bScore}`;
             }
             
-            ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.shadowBlur = 0;
-            for(let i=0; i<cvs.height; i+=40) { ctx.fillRect(cvs.width/2 - 2, i, 4, 20); }
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; 
+            ctx.shadowBlur = 0;
+            for(let i=0; i<cvs.height; i+=40) { 
+                ctx.fillRect(cvs.width/2 - 2, i, 4, 20); 
+            }
             
-            ctx.fillStyle = "#ffff00"; ctx.shadowColor = "#ffff00"; 
+            ctx.fillStyle = "#ffff00"; 
+            ctx.shadowColor = "#ffff00"; 
             ctx.shadowBlur = (gfxMode === 'high') ? 15 : 0;
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); 
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); 
+            ctx.fill();
             
             requestAnimationFrame(loop);
         }
 
         function processPhysics() {
-            ball.x += ball.vx; ball.y += ball.vy;
+            ball.x += ball.vx; 
+            ball.y += ball.vy;
 
             if(ball.y - ball.r <= 0 || ball.y + ball.r >= cvs.height) {
                 ball.vy *= -1;
@@ -1177,7 +1460,8 @@
         }
 
         function processCoopPhysics() {
-            ball.x += ball.vx; ball.y += ball.vy;
+            ball.x += ball.vx; 
+            ball.y += ball.vy;
 
             if(ball.y - ball.r <= 0 || ball.y + ball.r >= cvs.height) {
                 ball.vy *= -1;
@@ -1247,20 +1531,21 @@
         }
 
         // ==========================================
-        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA
+        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA & ESC MENÜ ZENE KAPCSOLÓ
         // ==========================================
         const zene = document.getElementById('hatterZene');
         const zeneLista = ['Lobby2.MP3', 'redstone.MP3'];
         let aktualisZene = 0;
+        let musicMutedManually = false;
 
         zene.addEventListener('ended', () => {
             aktualisZene = (aktualisZene + 1) % zeneLista.length;
             zene.src = zeneLista[aktualisZene];
-            zene.play();
+            if (!musicMutedManually) zene.play();
         });
 
         function zeneInditas() {
-            if (zene.paused) {
+            if (zene.paused && !musicMutedManually) {
                 zene.volume = 0.5;
                 zene.play().catch(() => {});
             }
@@ -1272,9 +1557,26 @@
             }
         }
 
-        // Első kattintásra engedélyezzük a lejátszást a böngésző policyk miatt
+        function toggleMusicFromPause() {
+            let btn = document.getElementById('pause-music-btn');
+            if (musicMutedManually) {
+                musicMutedManually = false;
+                zene.play().catch(()=>{});
+                btn.innerText = "ZENE: BE";
+                btn.style.borderColor = "var(--blue)";
+                btn.style.color = "var(--blue)";
+            } else {
+                musicMutedManually = true;
+                zene.pause();
+                btn.innerText = "ZENE: KI";
+                btn.style.borderColor = "red";
+                btn.style.color = "red";
+            }
+        }
+
         document.body.addEventListener('click', () => {
-            if (document.getElementById('screen-main').style.display !== 'none' || document.getElementById('screen-auth').style.display !== 'none' || document.getElementById('screen-start').style.display !== 'none') {
+            let activeView = document.querySelector('.view[style*="display: block"]');
+            if (activeView && activeView.id !== 'screen-pong' && activeView.id !== 'screen-pause') {
                 zeneInditas();
             }
         }, { once: true });
