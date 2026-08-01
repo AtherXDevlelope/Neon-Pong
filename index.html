@@ -1604,28 +1604,20 @@
         });
     </script>
 
+
+
+
 <script>
-// ESC letiltása nagykép módban
+// ESC teljes tiltása nagyképnél ÉS meccs közben is
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape' || e.key === 'Esc' || e.keyCode === 27) {
-        // Ha van aktív nagykép/lightbox/modal, ne engedjük bezárni
-        const nagykepElemek = document.querySelectorAll('.lightbox, .modal, .nagykep, #lightbox, #modal, .full-image, .zoom-view');
-        let vanAktiv = false;
-        nagykepElemek.forEach(el => {
-            const style = window.getComputedStyle(el);
-            if (style.display !== 'none' && style.visibility !== 'hidden' && style.opacity !== '0') {
-                vanAktiv = true;
-            }
-        });
-        if (vanAktiv) {
-            e.preventDefault();
-            e.stopPropagation();
-            e.stopImmediatePropagation();
-            console.log('ESC letiltva nagykép nézetben');
-            return false;
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log('ESC le van tiltva teljesen');
+        return false;
     }
-}, true); // useCapture = true, hogy előbb fusson le mint a többi handler
+}, true);
 </script>
 
 </body>
