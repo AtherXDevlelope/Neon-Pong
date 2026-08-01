@@ -434,7 +434,6 @@
         }
 
         function checkAdminPrivileges() {
-            // Kis- és nagybetű független ellenőrzés, hogy biztosan megjelenjen az admin panel
             if (currentUser && currentUser.toLowerCase() === "aetherxreal") {
                 document.getElementById('admin-menu-btn').style.display = 'block';
             } else {
@@ -1048,6 +1047,23 @@
 
             cvs.classList.remove('show-cursor');
             resetBall();
+
+            // ==========================================
+            // ITT INDULNAK A ZENEI RÉTEGEK A GAMEMODE INDÍTÁSA UTÁN:
+            // ==========================================
+            let zeneChaos = new Audio('Chaos_2.MP3');
+            let zeneCurse = new Audio('Curse_2.MP3');
+            let zeneExploler = new Audio('Exploler_2.MP3');
+            let zeneMossy = new Audio('Mossy_2.MP3');
+            let zeneRose = new Audio('rose_2.MP3');
+
+            zeneChaos.play().catch(() => {});
+            zeneCurse.play().catch(() => {});
+            zeneExploler.play().catch(() => {});
+            zeneMossy.play().catch(() => {});
+            zeneRose.play().catch(() => {});
+            // ==========================================
+
             requestAnimationFrame(loop);
         }
 
