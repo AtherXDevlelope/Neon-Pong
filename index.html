@@ -935,7 +935,8 @@
                 lastTime = nowTime;
             }
 
-            ctx.fillStyle = "black"; ctx.fillRect(0, 0, cvs.width, cvs.height);
+            ctx.fillStyle = "black"; 
+            ctx.fillRect(0, 0, cvs.width, cvs.height);
             
             let nowTimeMs = Date.now();
             let shouldSync = (nowTimeMs - lastNetworkUpdate > networkInterval);
@@ -1051,41 +1052,66 @@
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             if (activeGameMode === 'solo_boss') {
-                ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py, pw, ph);
+                ctx.fillStyle = paddleColor; 
+                ctx.shadowColor = paddleColor; 
+                ctx.fillRect(30, py, pw, ph);
                 
                 let bossColor = (currentWave === 15 && bossStopperActive) ? "#ff3131" : "#ff00ff";
-                ctx.fillStyle = bossColor; ctx.shadowColor = bossColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                ctx.fillStyle = bossColor; 
+                ctx.shadowColor = bossColor; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 let stopperStatusText = (currentWave === 15) ? (bossStopperActive ? " | <span style='color:red'>🛑 STOPPER AKTÍV!</span>" : " | 🛑 COOLDOWN") : "";
                 document.getElementById('hud-content').innerHTML = `SOLO WAVE: <span style="color:var(--blue)">${currentWave}/15</span> | PONT: <span style="color:var(--yellow)">${waveScore}/3</span> | ÉLET: <span style="color:red">${coopLives}</span>${stopperStatusText}`;
             } 
             else if (activeGameMode === 'coop_boss') {
-                ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py1, pw, ph);
-                ctx.fillStyle = "#ff00ff"; ctx.shadowColor = "#ff00ff"; ctx.fillRect(60, py2, pw, ph);
-                ctx.fillStyle = "#ff3131"; ctx.shadowColor = "#ff3131"; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                ctx.fillStyle = paddleColor; 
+                ctx.shadowColor = paddleColor; 
+                ctx.fillRect(30, py1, pw, ph);
+                
+                ctx.fillStyle = "#ff00ff"; 
+                ctx.shadowColor = "#ff00ff"; 
+                ctx.fillRect(60, py2, pw, ph);
+                
+                ctx.fillStyle = "#ff3131"; 
+                ctx.shadowColor = "#ff3131"; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 document.getElementById('hud-content').innerHTML = `WAVE: <span style="color:var(--blue)">${currentWave}/15</span> | BOSS PONT: <span style="color:var(--yellow)">${waveScore}/3</span> | ÉLET: <span style="color:red">${coopLives}</span>`;
             } else {
                 let p1DrawColor = paddleColor;
                 let p2DrawColor = "#ff00ff";
-                ctx.fillStyle = p1DrawColor; ctx.shadowColor = p1DrawColor; ctx.fillRect(30, py, pw, ph);
-                ctx.fillStyle = p2DrawColor; ctx.shadowColor = p2DrawColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
+                
+                ctx.fillStyle = p1DrawColor; 
+                ctx.shadowColor = p1DrawColor; 
+                ctx.fillRect(30, py, pw, ph);
+                
+                ctx.fillStyle = p2DrawColor; 
+                ctx.shadowColor = p2DrawColor; 
+                ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 document.getElementById('hud-content').innerHTML = `P1: ${pScore} | P2: ${bScore}`;
             }
             
-            ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.shadowBlur = 0;
-            for(let i=0; i<cvs.height; i+=40) { ctx.fillRect(cvs.width/2 - 2, i, 4, 20); }
+            ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; 
+            ctx.shadowBlur = 0;
+            for(let i=0; i<cvs.height; i+=40) { 
+                ctx.fillRect(cvs.width/2 - 2, i, 4, 20); 
+            }
             
-            ctx.fillStyle = "#ffff00"; ctx.shadowColor = "#ffff00"; 
+            ctx.fillStyle = "#ffff00"; 
+            ctx.shadowColor = "#ffff00"; 
             ctx.shadowBlur = (gfxMode === 'high') ? 15 : 0;
-            ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
+            ctx.beginPath(); 
+            ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); 
+            ctx.fill();
             
             requestAnimationFrame(loop);
         }
 
         function processPhysics() {
-            ball.x += ball.vx; ball.y += ball.vy;
+            ball.x += ball.vx; 
+            ball.y += ball.vy;
 
             if(ball.y - ball.r <= 0 || ball.y + ball.r >= cvs.height) {
                 ball.vy *= -1;
@@ -1177,7 +1203,8 @@
         }
 
         function processCoopPhysics() {
-            ball.x += ball.vx; ball.y += ball.vy;
+            ball.x += ball.vx; 
+            ball.y += ball.vy;
 
             if(ball.y - ball.r <= 0 || ball.y + ball.r >= cvs.height) {
                 ball.vy *= -1;
@@ -1247,7 +1274,7 @@
         }
 
         // ==========================================
-        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA
+        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA (Javítva)
         // ==========================================
         const zene = document.getElementById('hatterZene');
         const zeneLista = ['Lobby2.MP3', 'redstone.MP3'];
@@ -1272,9 +1299,9 @@
             }
         }
 
-        // Első kattintásra engedélyezzük a lejátszást a böngésző policyk miatt
         document.body.addEventListener('click', () => {
-            if (document.getElementById('screen-main').style.display !== 'none' || document.getElementById('screen-auth').style.display !== 'none' || document.getElementById('screen-start').style.display !== 'none') {
+            let activeView = document.querySelector('.view[style*="display: block"]');
+            if (activeView && activeView.id !== 'screen-pong' && activeView.id !== 'screen-pause') {
                 zeneInditas();
             }
         }, { once: true });
