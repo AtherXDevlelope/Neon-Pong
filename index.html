@@ -257,9 +257,9 @@
         let publicChatRef = null;
         let privateChatRef = null;
 
-        // Új hálózati throttling változók
+        // Hálózati optimalizálás & simítás (Throttling & LERP)
         let lastNetworkUpdate = 0;
-        const networkInterval = 50; // Milliszekundum (20 frissítés/mp)
+        const networkInterval = 50; // 20 frissítés/mp
 
         let currentWave = 1;
         let waveScore = 0;
@@ -970,7 +970,9 @@
                         lastNetworkUpdate = nowTimeMs;
                     }
                     if (remoteData.p2Y !== undefined) {
-                        by = remoteData.p2Y * cvs.height;
+                        // LERP simítás a host oldalon a kliens ütőjéhez
+                        let targetBy = remoteData.p2Y * cvs.height;
+                        by += (targetBy - by) * 0.4;
                     }
                 } else {
                     if (shouldSync) {
@@ -978,9 +980,15 @@
                         lastNetworkUpdate = nowTimeMs;
                     }
                     if (remoteData.ballX !== undefined) {
-                        ball.x = remoteData.ballX * cvs.width;
-                        ball.y = remoteData.ballY * cvs.height;
-                        py = remoteData.p1Y * cvs.height;
+                        // LERP simítás a kliens oldalon a labdára és a host ütőjére
+                        let targetBallX = remoteData.ballX * cvs.width;
+                        let targetBallY = remoteData.ballY * cvs.height;
+                        let targetP1Y = remoteData.p1Y * cvs.height;
+
+                        ball.x += (targetBallX - ball.x) * 0.4;
+                        ball.y += (targetBallY - ball.y) * 0.4;
+                        py += (targetP1Y - py) * 0.4;
+
                         pScore = remoteData.score1;
                         bScore = remoteData.score2;
                     }
@@ -1004,7 +1012,8 @@
                     }
 
                     if (remoteData.p2Y !== undefined) {
-                        py2 = remoteData.p2Y * cvs.height;
+                        let targetPy2 = remoteData.p2Y * cvs.height;
+                        py2 += (targetPy2 - py2) * 0.4;
                     }
                 } else {
                     if (shouldSync) {
@@ -1013,10 +1022,16 @@
                     }
 
                     if (remoteData.ballX !== undefined) {
-                        ball.x = remoteData.ballX * cvs.width;
-                        ball.y = remoteData.ballY * cvs.height;
-                        py1 = remoteData.p1Y * cvs.height;
-                        by = remoteData.bossY * cvs.height;
+                        let targetBallX = remoteData.ballX * cvs.width;
+                        let targetBallY = remoteData.ballY * cvs.height;
+                        let targetPy1 = remoteData.p1Y * cvs.height;
+                        let targetBossY = remoteData.bossY * cvs.height;
+
+                        ball.x += (targetBallX - ball.x) * 0.4;
+                        ball.y += (targetBallY - ball.y) * 0.4;
+                        py1 += (targetPy1 - py1) * 0.4;
+                        by += (targetBossY - by) * 0.4;
+
                         currentWave = remoteData.wave || 1;
                         waveScore = remoteData.waveScore || 0;
                         coopLives = remoteData.lives || 3;
