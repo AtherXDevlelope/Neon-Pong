@@ -251,11 +251,15 @@
         let roomId = null;
         let isHost = false;
         let roomRef = null;
-        let remoteData = {}; // Optimalizált multi-data cache
+        let remoteData = {}; 
         let pendingDuelInvite = null;
         let activePrivateChatFriend = null;
         let publicChatRef = null;
         let privateChatRef = null;
+
+        // Új hálózati throttling változók
+        let lastNetworkUpdate = 0;
+        const networkInterval = 50; // Milliszekundum (20 frissítés/mp)
 
         let currentWave = 1;
         let waveScore = 0;
@@ -809,7 +813,6 @@
         function startGameMulti() {
             document.getElementById('waiting-modal').style.display = 'none';
             
-            // OPTIMALIZÁLT HÁTTÉRFIGYELŐ A LAGGELÉS ELKERÜLÉSÉRE
             if (roomRef) {
                 roomRef.on('value', snap => {
                     let d = snap.val();
@@ -926,6 +929,9 @@
 
             ctx.fillStyle = "black"; ctx.fillRect(0, 0, cvs.width, cvs.height);
             
+            let nowTimeMs = Date.now();
+            let shouldSync = (nowTimeMs - lastNetworkUpdate > networkInterval);
+
             if (activeGameMode === 'single') {
                 by += (ball.y - (by + ph/2)) * 0.10; 
                 processPhysics();
@@ -956,15 +962,21 @@
             else if (activeGameMode === 'multi') {
                 if (isHost) {
                     processPhysics();
-                    roomRef.update({
-                        ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
-                        p1Y: py / cvs.height, score1: pScore, score2: bScore
-                    });
+                    if (shouldSync) {
+                        roomRef.update({
+                            ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
+                            p1Y: py / cvs.height, score1: pScore, score2: bScore
+                        });
+                        lastNetworkUpdate = nowTimeMs;
+                    }
                     if (remoteData.p2Y !== undefined) {
                         by = remoteData.p2Y * cvs.height;
                     }
                 } else {
-                    roomRef.update({ p2Y: by / cvs.height });
+                    if (shouldSync) {
+                        roomRef.update({ p2Y: by / cvs.height });
+                        lastNetworkUpdate = nowTimeMs;
+                    }
                     if (remoteData.ballX !== undefined) {
                         ball.x = remoteData.ballX * cvs.width;
                         ball.y = remoteData.ballY * cvs.height;
@@ -982,17 +994,23 @@
 
                     processCoopPhysics();
 
-                    roomRef.update({
-                        ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
-                        p1Y: py1 / cvs.height, bossY: by / cvs.height,
-                        wave: currentWave, waveScore: waveScore, lives: coopLives
-                    });
+                    if (shouldSync) {
+                        roomRef.update({
+                            ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
+                            p1Y: py1 / cvs.height, bossY: by / cvs.height,
+                            wave: currentWave, waveScore: waveScore, lives: coopLives
+                        });
+                        lastNetworkUpdate = nowTimeMs;
+                    }
 
                     if (remoteData.p2Y !== undefined) {
                         py2 = remoteData.p2Y * cvs.height;
                     }
                 } else {
-                    roomRef.update({ p2Y: py2 / cvs.height });
+                    if (shouldSync) {
+                        roomRef.update({ p2Y: py2 / cvs.height });
+                        lastNetworkUpdate = nowTimeMs;
+                    }
 
                     if (remoteData.ballX !== undefined) {
                         ball.x = remoteData.ballX * cvs.width;
