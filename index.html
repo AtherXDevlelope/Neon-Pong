@@ -373,6 +373,9 @@
             currentUser = name;
             localStorage.setItem('activeUser', currentUser);
             
+            // Felhasználói interakció (kattintás) -> itt indítjuk biztonságosan a zenét
+            zeneInditas();
+
             checkAdminPrivileges();
 
             if(db) {
