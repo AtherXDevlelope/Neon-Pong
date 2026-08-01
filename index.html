@@ -243,9 +243,10 @@
         </div>
     </div>
 
-    <!-- HÁTTÉRZENE LEJÁTSZÓ TAG -->
+    <!-- HÁTTÉRZENE LEJÁTSZÓ TAG A FŐMENÜHÖZ -->
+    <!-- AZ SRC ALAPÉRTELMEZETTEN AZ ÚJ ZENE -->
     <audio id="hatterZene">
-        <source src="Lobby2.MP3" type="audio/mpeg">
+        <source src="fomenu.mp3" type="audio/mpeg">
     </audio>
 
     <script>
@@ -287,6 +288,9 @@
         let activeVoiceFriend = null;
         let voiceSignalRef = null;
         const rtcConfig = { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] };
+
+        // Globális tömb a meccs közbeni zenei rétegeknek (EZ A JAVÍTÁS RÉSZE)
+        let matchAudioLayers = [];
 
         // Hálózati optimalizálás & simítás (Throttling & LERP)
         let lastNetworkUpdate = 0;
@@ -1049,19 +1053,28 @@
             resetBall();
 
             // ==========================================
-            // ITT INDULNAK A ZENEI RÉTEGEK A GAMEMODE INDÍTÁSA UTÁN:
+            // JAVÍTOTT ZENEI RENDSZER A MECCSHEZ:
             // ==========================================
-            let zeneChaos = new Audio('Chaos_2.MP3');
-            let zeneCurse = new Audio('Curse_2.MP3');
-            let zeneExploler = new Audio('Exploler_2.MP3');
-            let zeneMossy = new Audio('Mossy_2.MP3');
-            let zeneRose = new Audio('rose_2.MP3');
+            // Először leállítjuk az esetlegesen már futó rétegeket
+            matchAudioLayers.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            matchAudioLayers = [];
 
-            zeneChaos.play().catch(() => {});
-            zeneCurse.play().catch(() => {});
-            zeneExploler.play().catch(() => {});
-            zeneMossy.play().catch(() => {});
-            zeneRose.play().catch(() => {});
+            const zeneFajlok = ['Chaos_2.MP3', 'Curse_2.MP3', 'Exploler_2.MP3', 'Mossy_2.MP3', 'rose_2.MP3'];
+            
+            zeneFajlok.forEach(fajlNev => {
+                let audioLayer = new Audio(fajlNev);
+                audioLayer.loop = true;
+                audioLayer.volume = 0.6;
+                
+                audioLayer.play().catch(err => {
+                    console.error(`⚠️ Nem sikerült lejátszani a(z) ${fajlNev} fájlt! Ok:`, err.message);
+                });
+                
+                matchAudioLayers.push(audioLayer);
+            });
             // ==========================================
 
             requestAnimationFrame(loop);
@@ -1074,6 +1087,14 @@
                 roomRef.remove();
             }
             if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+            
+            // Meccs közbeni zenék leállítása
+            matchAudioLayers.forEach(audio => {
+                audio.pause();
+                audio.currentTime = 0;
+            });
+            matchAudioLayers = [];
+
             showView('screen-main');
         }
 
@@ -1496,7 +1517,8 @@
         }
 
         const zene = document.getElementById('hatterZene');
-        const zeneLista = ['Lobby2.MP3', 'redstone.MP3'];
+        // Itt frissítettem a listát, hogy az új zenéd ('fomenu.mp3') legyen benne
+        const zeneLista = ['fomenu.mp3', 'Lobby2.MP3', 'redstone.MP3'];
         let aktualisZene = 0;
         let musicMutedManually = false;
 
@@ -1509,7 +1531,9 @@
         function zeneInditas() {
             if (zene.paused && !musicMutedManually) {
                 zene.volume = 0.5;
-                zene.play().catch(() => {});
+                zene.play().catch(err => {
+                    console.log("Főmenü zene hiba (esetleg kattints a képernyőre az indításhoz):", err);
+                });
             }
         }
 
