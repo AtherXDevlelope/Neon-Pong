@@ -73,6 +73,7 @@
             <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
             <div class="btn" onclick="openPublicChat()" style="border-color: #39ff14; color: #39ff14;">[ PUBLIKUS CHAT ]</div>
+            <div class="btn" id="main-music-btn" onclick="toggleMainMusic()" style="border-color: #ff00ff; color: #ff00ff;">[ HÁTTÉRZENE: BE ]</div>
             <div class="btn" id="gfx-btn" onclick="toggleGraphics()" style="border-color: #ff8800; color: #ff8800;">[ GRAFIKA: MAGAS ]</div>
             <div class="btn" id="admin-menu-btn" onclick="openAdminPanel()" style="display:none; border-color: red; color: red; box-shadow: 0 0 15px red;">[ ⚡ ADMIN PANEL ]</div>
             <div class="btn" style="border-color: red; color: red;" onclick="logout()">[ KIJELENTKEZÉS ]</div>
@@ -1054,7 +1055,6 @@
             });
             matchAudioLayers = [];
 
-            // Pontos, nagybetűs kiterjesztésű fájlnevek a GitHubod alapján:
             const zeneFajlok = ['chaos.MP3', 'curse.MP3', 'Exploler.MP3', 'mossy.MP3', 'rose.MP3'];
             
             zeneFajlok.forEach(fajlNev => {
@@ -1508,7 +1508,6 @@
         }
 
         const zene = document.getElementById('hatterZene');
-        // Itt is a pontos, nagybetűs kiterjesztésű fájlnevek szerepelnek:
         const zeneLista = ['fomenu.MP3', 'fomenu2.MP3'];
         let aktualisZene = 0;
         let musicMutedManually = false;
@@ -1523,7 +1522,7 @@
             if (zene.paused && !musicMutedManually) {
                 zene.volume = 0.5;
                 zene.play().catch(err => {
-                    console.log("Főmenü zene hiba (esetleg kattints a képernyőre az indításhoz):", err);
+                    console.log("Főmenü zene blokkolva, kattints az oldalra:", err);
                 });
             }
         }
@@ -1534,15 +1533,28 @@
             }
         }
 
-        function toggleMusicFromPause() {
-            let btn = document.getElementById('pause-music-btn');
+        function toggleMainMusic() {
+            let btn = document.getElementById('main-music-btn');
+            let pauseBtn = document.getElementById('pause-music-btn');
             if (musicMutedManually) {
                 musicMutedManually = false;
                 zene.play().catch(()=>{});
+                btn.innerText = "[ HÁTTÉRZENE: BE ]";
+                btn.style.borderColor = "#ff00ff";
+                btn.style.color = "#ff00ff";
+                if(pauseBtn) pauseBtn.innerText = "ZENE: BE";
             } else {
                 musicMutedManually = true;
                 zene.pause();
+                btn.innerText = "[ HÁTTÉRZENE: KI ]";
+                btn.style.borderColor = "gray";
+                btn.style.color = "gray";
+                if(pauseBtn) pauseBtn.innerText = "ZENE: KI";
             }
+        }
+
+        function toggleMusicFromPause() {
+            toggleMainMusic();
         }
     </script>
 </body>
