@@ -300,6 +300,9 @@
             document.getElementById(id).style.display = 'block';
             if(id !== 'screen-pong' && id !== 'screen-pause') {
                 document.getElementById('ui-container').style.display = 'flex';
+                zeneInditas(); // Zene indítása lobbyban
+            } else {
+                zeneLeallitas(); // Zene leállítása játék közben
             }
             updateCoinDisplay();
         }
@@ -975,7 +978,6 @@
                         lastNetworkUpdate = nowTimeMs;
                     }
                     if (remoteData.p2Y !== undefined) {
-                        // LERP simítás a host oldalon a kliens ütőjéhez
                         let targetBy = remoteData.p2Y * cvs.height;
                         by += (targetBy - by) * 0.4;
                     }
@@ -985,7 +987,6 @@
                         lastNetworkUpdate = nowTimeMs;
                     }
                     if (remoteData.ballX !== undefined) {
-                        // LERP simítás a kliens oldalon a labdára és a host ütőjére
                         let targetBallX = remoteData.ballX * cvs.width;
                         let targetBallY = remoteData.ballY * cvs.height;
                         let targetP1Y = remoteData.p1Y * cvs.height;
@@ -1127,11 +1128,126 @@
                 ball.y = ball.y - ball.r <= 0 ? ball.r + 1 : cvs.height - ball.r - 1;
             }
             
-            // Itt folytatódnak a fizikai feltételek és egyéb funkciók, amiket lecsíptél a példából...
+            if(ball.x - ball.r < 30 + pw && ball.y > py && ball.y < py + ph && ball.vx < 0) {
+                let hitPoint = (ball.y - (py + ph/2)) / (ph/2); 
+                let angle = hitPoint * (Math.PI / 4); 
+                let currentSpeed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) * 1.05; 
+                if(currentSpeed > ball.maxSpeed) currentSpeed = ball.maxSpeed;
+                ball.vx = currentSpeed * Math.cos(angle);
+                ball.vy = currentSpeed * Math.sin(angle);
+            }
+            
+            if(ball.x + ball.r > cvs.width - 30 - pw && ball.y > by && ball.y < by + ph && ball.vx > 0) {
+                let hitPoint = (ball.y - (by + ph/2)) / (ph/2);
+                let angle = hitPoint * (Math.PI / 4);
+                let currentSpeed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) * 1.05;
+                if(currentSpeed > ball.maxSpeed) currentSpeed = ball.maxSpeed;
+                ball.vx = -currentSpeed * Math.cos(angle); 
+                ball.vy = currentSpeed * Math.sin(angle);
+            }
+
+            if(ball.x < 0) { 
+                coopLives--; 
+                if(coopLives <= 0) {
+                    alert("A Boss legyőzött! Vége a játéknak.");
+                    quitGame();
+                } else {
+                    resetBall();
+                }
+            }
+            if(ball.x > cvs.width) { 
+                waveScore++; 
+                if(waveScore >= 3) {
+                    waveScore = 0;
+                    currentWave++;
+                    playerCoins += 50;
+                    updateCoinDisplay();
+                    if(currentWave > 15) {
+                        alert("Gratulálok! Teljesítetted mind a 15 hullámot és legyőzted a Főbosst! Jutalom: 500 Coin!");
+                        playerCoins += 500;
+                        updateCoinDisplay();
+                        quitGame();
+                        return;
+                    } else {
+                        alert(`Hullám teljesítve! Következik a(z) ${currentWave}. hullám.`);
+                    }
+                }
+                resetBall(); 
+            }
+        }
+
+        function processCoopPhysics() {
+            ball.x += ball.vx; ball.y += ball.vy;
+
+            if(ball.y - ball.r <= 0 || ball.y + ball.r >= cvs.height) {
+                ball.vy *= -1;
+                ball.y = ball.y - ball.r <= 0 ? ball.r + 1 : cvs.height - ball.r - 1;
+            }
+            
+            if(ball.x - ball.r < 30 + pw && ball.y > py1 && ball.y < py1 + ph && ball.vx < 0) {
+                let hitPoint = (ball.y - (py1 + ph/2)) / (ph/2); 
+                let angle = hitPoint * (Math.PI / 4); 
+                let currentSpeed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) * 1.05; 
+                if(currentSpeed > ball.maxSpeed) currentSpeed = ball.maxSpeed;
+                ball.vx = currentSpeed * Math.cos(angle);
+                ball.vy = currentSpeed * Math.sin(angle);
+            }
+
+            if(ball.x - ball.r < 60 + pw && ball.y > py2 && ball.y < py2 + ph && ball.vx < 0) {
+                let hitPoint = (ball.y - (py2 + ph/2)) / (ph/2); 
+                let angle = hitPoint * (Math.PI / 4); 
+                let currentSpeed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) * 1.05; 
+                if(currentSpeed > ball.maxSpeed) currentSpeed = ball.maxSpeed;
+                ball.vx = currentSpeed * Math.cos(angle);
+                ball.vy = currentSpeed * Math.sin(angle);
+            }
+            
+            if(ball.x + ball.r > cvs.width - 30 - pw && ball.y > by && ball.y < by + ph && ball.vx > 0) {
+                let hitPoint = (ball.y - (by + ph/2)) / (ph/2);
+                let angle = hitPoint * (Math.PI / 4);
+                let currentSpeed = Math.sqrt(ball.vx*ball.vx + ball.vy*ball.vy) * 1.05;
+                if(currentSpeed > ball.maxSpeed) currentSpeed = ball.maxSpeed;
+                ball.vx = -currentSpeed * Math.cos(angle); 
+                ball.vy = currentSpeed * Math.sin(angle);
+            }
+
+            if(ball.x < 0) { 
+                coopLives--; 
+                if(coopLives <= 0) {
+                    quitGame();
+                } else {
+                    resetBall();
+                }
+            }
+            if(ball.x > cvs.width) { 
+                waveScore++; 
+                if(waveScore >= 3) {
+                    waveScore = 0;
+                    currentWave++;
+                    if(currentWave > 15) {
+                        quitGame();
+                        return;
+                    }
+                }
+                resetBall(); 
+            }
+        }
+
+        function checkWin() {
+            if(pScore >= 5 || bScore >= 5) {
+                if(pScore >= 5) {
+                    playerCoins += 100;
+                    alert("GYŐZELEM! Jutalom: 100 Coin");
+                } else {
+                    alert("VERESÉG!");
+                }
+                updateCoinDisplay();
+                quitGame();
+            }
         }
 
         // ==========================================
-        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA (HOZZÁADVA)
+        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA
         // ==========================================
         const zene = document.getElementById('hatterZene');
         const zeneLista = ['Lobby2.MP3', 'redstone.MP3'];
@@ -1143,11 +1259,23 @@
             zene.play();
         });
 
-        // Az első kattintásra elindítjuk a zenét
-        document.body.addEventListener('click', () => {
+        function zeneInditas() {
             if (zene.paused) {
-                zene.volume = 0.5; // Kellemes, 50%-os hangerő
-                zene.play();
+                zene.volume = 0.5;
+                zene.play().catch(() => {});
+            }
+        }
+
+        function zeneLeallitas() {
+            if (!zene.paused) {
+                zene.pause();
+            }
+        }
+
+        // Első kattintásra engedélyezzük a lejátszást a böngésző policyk miatt
+        document.body.addEventListener('click', () => {
+            if (document.getElementById('screen-main').style.display !== 'none' || document.getElementById('screen-auth').style.display !== 'none' || document.getElementById('screen-start').style.display !== 'none') {
+                zeneInditas();
             }
         }, { once: true });
         
