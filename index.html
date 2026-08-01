@@ -326,9 +326,9 @@
             document.getElementById(id).style.display = 'block';
             if(id !== 'screen-pong' && id !== 'screen-pause') {
                 document.getElementById('ui-container').style.display = 'flex';
-                if (!musicMutedManually) zeneInditas(); // Zene indítása lobbyban, ha nincs kézzel némítva
+                if (!musicMutedManually) zeneInditas(); 
             } else {
-                zeneLeallitas(); // Zene leállítása játék közben
+                zeneLeallitas(); 
             }
             updateCoinDisplay();
         }
@@ -374,7 +374,6 @@
             currentUser = name;
             localStorage.setItem('activeUser', currentUser);
             
-            // Ellenőrzés, hogy admin-e (AetherXReal)
             checkAdminPrivileges();
 
             if(db) {
@@ -435,7 +434,8 @@
         }
 
         function checkAdminPrivileges() {
-            if (currentUser === "AetherXReal") {
+            // Kis- és nagybetű független ellenőrzés, hogy biztosan megjelenjen az admin panel
+            if (currentUser && currentUser.toLowerCase() === "aetherxreal") {
                 document.getElementById('admin-menu-btn').style.display = 'block';
             } else {
                 document.getElementById('admin-menu-btn').style.display = 'none';
@@ -443,7 +443,7 @@
         }
 
         function openAdminPanel() {
-            if (currentUser !== "AetherXReal") return alert("Nincs admin jogosultságod!");
+            if (!currentUser || currentUser.toLowerCase() !== "aetherxreal") return alert("Nincs admin jogosultságod!");
             document.getElementById('admin-modal').style.display = 'block';
             loadAdminPanel();
         }
@@ -735,9 +735,6 @@
             });
         }
 
-        // ==========================================
-        // BEÉPÍTETT VOICE CHAT (WebRTC P2P)
-        // ==========================================
         async function toggleVoiceChat(friendName) {
             if (activeVoiceFriend === friendName) {
                 stopVoiceChat();
@@ -774,14 +771,12 @@
                     }
                 };
 
-                // Ha én hívom
                 voiceSignalRef.remove().then(async () => {
                     let offer = await peerConnection.createOffer();
                     await peerConnection.setLocalDescription(offer);
                     voiceSignalRef.child('offer').set({ sender: currentUser, sdp: JSON.stringify(offer) });
                 });
 
-                // Figyelés válaszra és jelzésekre
                 voiceSignalRef.child('answer').on('value', async snap => {
                     let ans = snap.val();
                     if (ans && ans.sender !== currentUser && !peerConnection.currentRemoteDescription) {
@@ -804,60 +799,6 @@
             } catch (err) {
                 alert("Nem sikerült elérni a mikrofont: " + err.message);
             }
-        }
-
-        // Fogadó oldal ellenőrzése háttérben
-        function listenForIncomingVoiceCalls() {
-            if (!db || !currentUser) return;
-            db.ref('voice_signals').on('child_added', async snap => {
-                let callKey = snap.key;
-                if (callKey && callKey.includes(currentUser)) {
-                    let data = snap.val();
-                    if (data && data.offer && data.offer.sender !== currentUser && !activeVoiceFriend) {
-                        let caller = data.offer.sender;
-                        if (confirm(`${caller} voice chatre hív. Elfogadod?`)) {
-                            activeVoiceFriend = caller;
-                            document.getElementById('voice-hud-indicator').style.display = 'block';
-                            voiceSignalRef = db.ref('voice_signals/' + callKey);
-
-                            try {
-                                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                                peerConnection = new RTCPeerConnection(rtcConfig);
-                                localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
-
-                                peerConnection.ontrack = event => {
-                                    let remoteAudio = document.createElement('audio');
-                                    remoteAudio.srcObject = event.streams[0];
-                                    remoteAudio.autoplay = true;
-                                    document.body.appendChild(remoteAudio);
-                                };
-
-                                peerConnection.onicecandidate = event => {
-                                    if (event.candidate) {
-                                        voiceSignalRef.child('candidates').push(JSON.stringify(event.candidate));
-                                    }
-                                };
-
-                                await peerConnection.setRemoteDescription(new RTCSessionDescription(JSON.parse(data.offer.sdp)));
-                                let answer = await peerConnection.createAnswer();
-                                await peerConnection.setLocalDescription(answer);
-                                voiceSignalRef.child('answer').set({ sender: currentUser, sdp: JSON.stringify(answer) });
-
-                                voiceSignalRef.child('candidates').on('child_added', async snapC => {
-                                    let candData = snapC.val();
-                                    if (candData && peerConnection) {
-                                        try {
-                                            await peerConnection.addIceCandidate(new RTCIceCandidate(JSON.parse(candData)));
-                                        } catch(e){}
-                                    }
-                                });
-                            } catch(e) {
-                                alert("Mikrofon hiba: " + e.message);
-                            }
-                        }
-                    }
-                }
-            });
         }
 
         function stopVoiceChat() {
@@ -1538,9 +1479,6 @@
             }
         }
 
-        // ==========================================
-        // HÁTTÉRZENE LEJÁTSZÓ LOGIKA & ESC MENÜ ZENE KAPCSOLÓ
-        // ==========================================
         const zene = document.getElementById('hatterZene');
         const zeneLista = ['Lobby2.MP3', 'redstone.MP3'];
         let aktualisZene = 0;
@@ -1570,25 +1508,11 @@
             if (musicMutedManually) {
                 musicMutedManually = false;
                 zene.play().catch(()=>{});
-                btn.innerText = "ZENE: BE";
-                btn.style.borderColor = "var(--blue)";
-                btn.style.color = "var(--blue)";
             } else {
                 musicMutedManually = true;
                 zene.pause();
-                btn.innerText = "ZENE: KI";
-                btn.style.borderColor = "red";
-                btn.style.color = "red";
             }
         }
-
-        document.body.addEventListener('click', () => {
-            let activeView = document.querySelector('.view[style*="display: block"]');
-            if (activeView && activeView.id !== 'screen-pong' && activeView.id !== 'screen-pause') {
-                zeneInditas();
-            }
-        }, { once: true });
-        
     </script>
 </body>
 </html>
