@@ -2,7 +2,7 @@
 <html lang="hu">
 <head>
     <meta charset="UTF-8">
-    <title>Minecraft Cyberpunk Ultimate Edition</title>
+    <title>Cyberpunk Pong Ultimate Edition</title>
     <!-- Firebase SDK linkek -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -15,12 +15,12 @@
 
         #ui-container { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; position: absolute; width: 100%; z-index: 10; }
         
-        .glitch { font-size: 3rem; color: var(--blue); text-shadow: 2px 2px var(--pink); animation: g 2s infinite; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; }
+        .glitch { font-size: 2.8rem; color: var(--blue); text-shadow: 2px 2px var(--pink); animation: g 2s infinite; margin-bottom: 30px; text-transform: uppercase; letter-spacing: 2px; text-align: center; }
         @keyframes g { 0%, 100% { transform: skew(0); } 20% { transform: skew(-2deg); } 40% { transform: skew(2deg); } }
 
         .btn {
             background: rgba(0, 242, 255, 0.05); border: 2px solid var(--blue); color: var(--blue);
-            padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 1.1rem; width: 340px;
+            padding: 15px 40px; margin: 10px; cursor: pointer; font-size: 1.1rem; width: 360px;
             text-align: center; transition: 0.2s; box-shadow: 0 0 var(--glow) rgba(0, 242, 255, 0.2);
             text-transform: uppercase; font-weight: bold;
         }
@@ -58,7 +58,7 @@
     <div id="screen-main" class="view" style="display:none;">
         <div id="ui-container">
             <p id="user-welcome" style="color:var(--pink); margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px var(--pink);"></p>
-            <h1 class="glitch">MINECRAFT_2077</h1>
+            <h1 class="glitch">CYBERPUNK PONG</h1>
             <div class="btn" onclick="showView('screen-start')">[ START_SYSTEM ]</div>
             <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
@@ -176,7 +176,6 @@
         let isHost = false;
         let roomRef = null;
 
-        // Co-op Boss változók
         let currentWave = 1;
         let waveScore = 0;
         let coopLives = 3;
@@ -285,7 +284,6 @@
             document.getElementById('tutorial-modal').style.display = 'block'; 
         }
 
-        // --- MULTIPLAYER MATCHMAKING (PVP) ---
         function findMultiplayerMatch() {
             if(!db) return alert("Offline módban nem elérhető a játékoskereső!");
             activeGameMode = 'multi';
@@ -332,7 +330,6 @@
             });
         }
 
-        // --- ONLINE CO-OP BOSS MATCHMAKING ---
         function findCoopBossMatch() {
             if(!db) return alert("Offline módban nem elérhető a co-op mód!");
             activeGameMode = 'coop_boss';
@@ -521,7 +518,6 @@
             }
             else if (activeGameMode === 'coop_boss') {
                 if (isHost) {
-                    // Közepesen nehéz boss AI: követi a labdát korlátozott sebességgel + hullám szerinti gyorsulás
                     let bossSpeedFactor = 0.06 + (currentWave * 0.005);
                     by += (ball.y - (by + ph/2)) * bossSpeedFactor;
                     if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
@@ -558,7 +554,6 @@
                 }
             }
 
-            // Korlátok
             if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
             if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
             if(py1 < 0) py1 = 0; if(py1 > cvs.height - ph) py1 = cvs.height - ph;
@@ -567,10 +562,9 @@
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             if (activeGameMode === 'coop_boss') {
-                // Rajzolás Co-op módban: P1 és P2 balra, Boss jobbra
                 ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py1, pw, ph);
                 ctx.fillStyle = "#ff00ff"; ctx.shadowColor = "#ff00ff"; ctx.fillRect(60, py2, pw, ph);
-                ctx.fillStyle = "#ff3131"; ctx.shadowColor = "#ff3131"; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph); // Boss
+                ctx.fillStyle = "#ff3131"; ctx.shadowColor = "#ff3131"; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
                 document.getElementById('hud-content').innerHTML = `WAVE: <span style="color:var(--blue)">${currentWave}/10</span> | BOSS PONT: <span style="color:var(--yellow)">${waveScore}/3</span> | ÉLET: <span style="color:red">${coopLives}</span>`;
             } else {
@@ -583,7 +577,7 @@
                 ctx.fillStyle = p1DrawColor; ctx.shadowColor = p1DrawColor; ctx.fillRect(30, py, pw, ph);
                 ctx.fillStyle = p2DrawColor; ctx.shadowColor = p2DrawColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
-                document.getElementById('hud-content').innerHTML = `<span id="p1-name">P1</span>: ${pScore} | <span id="p2-name" style="color:var(--pink)">P2</span>: ${bScore}`;
+                document.getElementById('hud-content').innerHTML = `P1: ${pScore} | P2: ${bScore}`;
             }
             
             ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.shadowBlur = 0;
@@ -634,7 +628,6 @@
                 ball.y = ball.y - ball.r <= 0 ? ball.r + 1 : cvs.height - ball.r - 1; 
             }
             
-            // Játékos 1 ütő (X = 30)
             if(ball.x - ball.r < 30 + pw && ball.y > py1 && ball.y < py1 + ph && ball.vx < 0) {
                 let hitPoint = (ball.y - (py1 + ph/2)) / (ph/2); 
                 let angle = hitPoint * (Math.PI / 4); 
@@ -644,7 +637,6 @@
                 ball.vy = currentSpeed * Math.sin(angle);
             }
 
-            // Játékos 2 ütő (X = 60)
             if(ball.x - ball.r < 60 + pw && ball.x > 60 && ball.y > py2 && ball.y < py2 + ph && ball.vx < 0) {
                 let hitPoint = (ball.y - (py2 + ph/2)) / (ph/2); 
                 let angle = hitPoint * (Math.PI / 4); 
@@ -654,7 +646,6 @@
                 ball.vy = currentSpeed * Math.sin(angle);
             }
             
-            // Boss ütő (Jobb oldal)
             if(ball.x + ball.r > cvs.width - 30 - pw && ball.y > by && ball.y < by + ph && ball.vx > 0) {
                 let hitPoint = (ball.y - (by + ph/2)) / (ph/2);
                 let angle = hitPoint * (Math.PI / 4);
@@ -664,7 +655,6 @@
                 ball.vy = currentSpeed * Math.sin(angle);
             }
 
-            // Ha a bal oldalon megy ki (veszítenek életet)
             if(ball.x < 0) {
                 coopLives--;
                 if(coopLives <= 0) {
@@ -674,7 +664,6 @@
                 }
             }
 
-            // Ha a jobb oldalon megy ki (pont a boss ellen -> wave progress)
             if(ball.x > cvs.width) {
                 waveScore++;
                 if(waveScore >= 3) {
