@@ -26,7 +26,7 @@
         }
         .btn:hover { background: var(--blue); color: black; box-shadow: 0 0 30px var(--blue); transform: scale(1.05); }
 
-        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.95); border: 3px solid var(--pink); padding: 30px; z-index: 1000; box-shadow: 0 0 50px var(--pink); text-align: center; backdrop-filter: blur(5px); max-width: 450px; width: 100%; box-sizing: border-box; }
+        .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.95); border: 3px solid var(--pink); padding: 30px; z-index: 1000; box-shadow: 0 0 50px var(--pink); text-align: center; backdrop-filter: blur(5px); max-width: 480px; width: 100%; box-sizing: border-box; }
         
         canvas { display: block; width: 100vw; height: 100vh; background: #000; cursor: none; position: absolute; top: 0; left: 0; z-index: 1; }
         .show-cursor { cursor: default !important; }
@@ -35,6 +35,7 @@
         .auth-input:focus { box-shadow: 0 0 15px var(--pink); }
 
         .friend-input { background: #000; border: 1px solid var(--blue); color: white; padding: 8px; font-family: inherit; font-size: 1rem; width: 220px; outline: none; }
+        .chat-input { background: #000; border: 1px solid var(--blue); color: white; padding: 10px; font-family: inherit; font-size: 1rem; width: 70%; outline: none; box-sizing: border-box; }
         
         .color-opt { width: 35px; height: 35px; cursor: pointer; border: 2px solid white; display: inline-block; margin: 4px; transition: 0.2s; }
         .color-opt:hover { transform: scale(1.2); }
@@ -65,7 +66,7 @@
             <div class="btn" onclick="openFriendsModal()" style="border-color: var(--yellow); color: var(--yellow);">[ BARÁTOK ]</div>
             <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
-            <div class="btn" onclick="showView('screen-settings')">[ SETTINGS_CORE ]</div>
+            <div class="btn" onclick="openPublicChat()" style="border-color: var(--pink); color: var(--pink);">[ PUBLIKUS CHAT ]</div>
             <div class="btn" style="border-color: red; color: red;" onclick="logout()">[ KIJELENTKEZÉS ]</div>
         </div>
     </div>
@@ -100,6 +101,28 @@
             <p style="color: gray; text-align: center;">Nincsenek barátok.</p>
         </div>
         <div class="btn" style="border-color:gray; color:gray; box-shadow:none; width: 100%; margin: 0;" onclick="document.getElementById('friends-modal').style.display='none'">BEZÁRÁS</div>
+    </div>
+
+    <!-- PUBLIKUS CHAT MODAL -->
+    <div id="public-chat-modal" class="modal">
+        <h3 style="color:var(--pink)" class="glitch">PUBLIKUS ONLINE CHAT</h3>
+        <div id="public-chat-messages" style="height: 220px; overflow-y: auto; text-align: left; border: 1px solid var(--pink); padding: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.5); font-size: 0.9rem;"></div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <input type="text" id="public-chat-input" class="chat-input" placeholder="Írj üzenetet..." maxlength="100" onkeypress="if(event.key === 'Enter') sendPublicMessage()">
+            <div class="btn" style="width: 25%; padding: 10px 0; margin: 0; font-size: 0.9rem;" onclick="sendPublicMessage()">KÜLDÉS</div>
+        </div>
+        <div class="btn" style="border-color:gray; color:gray; box-shadow:none; width: 100%; margin: 0;" onclick="closePublicChat()">BEZÁRÁS</div>
+    </div>
+
+    <!-- PRIVÁT BARÁT CHAT MODAL -->
+    <div id="private-chat-modal" class="modal">
+        <h3 id="private-chat-title" style="color:var(--yellow)" class="glitch">BARÁT CHAT</h3>
+        <div id="private-chat-messages" style="height: 220px; overflow-y: auto; text-align: left; border: 1px solid var(--yellow); padding: 10px; margin-bottom: 15px; background: rgba(0,0,0,0.5); font-size: 0.9rem;"></div>
+        <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+            <input type="text" id="private-chat-input" class="chat-input" style="border-color: var(--yellow);" placeholder="Privát üzenet..." maxlength="100" onkeypress="if(event.key === 'Enter') sendPrivateMessage()">
+            <div class="btn" style="width: 25%; padding: 10px 0; margin: 0; font-size: 0.9rem; border-color: var(--yellow); color: var(--yellow);" onclick="sendPrivateMessage()">KÜLDÉS</div>
+        </div>
+        <div class="btn" style="border-color:gray; color:gray; box-shadow:none; width: 100%; margin: 0;" onclick="closePrivateChat()">BEZÁRÁS</div>
     </div>
 
     <!-- BEJÖVŐ DUEL MEGHÍVÁS MODAL -->
@@ -156,16 +179,6 @@
         <canvas id="pongCanvas"></canvas>
     </div>
 
-    <div id="screen-settings" class="view" style="display:none;">
-        <div id="ui-container">
-            <h2 style="color:var(--blue); text-shadow: 0 0 10px var(--blue);">CONFIG_CORE</h2>
-            <div class="btn" onclick="applyGfx('low')">LOW GRAFIKA</div>
-            <div class="btn" onclick="applyGfx('high')">HIGH GRAFIKA</div>
-            <div class="btn" onclick="toggleFPS()">FPS MONITOR: BE/KI</div>
-            <div class="btn" style="border-color:gray; color:gray; box-shadow:none;" onclick="showView('screen-main')">VISSZA</div>
-        </div>
-    </div>
-
     <!-- PAUSE MENÜ -->
     <div id="screen-pause" class="view" style="display:none; position:fixed; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000;">
         <div id="ui-container">
@@ -202,6 +215,9 @@
         let isHost = false;
         let roomRef = null;
         let pendingDuelInvite = null;
+        let activePrivateChatFriend = null;
+        let publicChatRef = null;
+        let privateChatRef = null;
 
         let currentWave = 1;
         let waveScore = 0;
@@ -259,12 +275,11 @@
                 });
                 userRef.child('status').onDisconnect().set('offline');
 
-                // Figyeljük a bejövő párbaj meghívásokat
                 userRef.child('incomingInvite').on('value', snap => {
                     let invite = snap.val();
                     if(invite && invite.status === 'pending') {
                         pendingDuelInvite = invite;
-                        document.getElementById('duel-invite-text').innerText = `${invite.from} PÁRBAJRA HÍVOTT!`;
+                        document.getElementById('duel-invite-text').innerText = `${invite.from} PÁRBAJra hívott!`;
                         document.getElementById('duel-invite-modal').style.display = 'block';
                     }
                 });
@@ -317,6 +332,106 @@
             }
         }
 
+        // --- CHAT RENDSZER (PUBLIKUS & PRIVÁT) ---
+        function openPublicChat() {
+            document.getElementById('public-chat-modal').style.display = 'block';
+            let container = document.getElementById('public-chat-messages');
+            container.innerHTML = "Kapcsolódás a publikus chathez...";
+            
+            if(db) {
+                publicChatRef = db.ref('public_chat').limitToLast(40);
+                publicChatRef.on('value', snapshot => {
+                    container.innerHTML = "";
+                    if(!snapshot.exists()) {
+                        container.innerHTML = "<p style='color:gray; text-align:center;'>Nincsenek üzenetek.</p>";
+                        return;
+                    }
+                    snapshot.forEach(child => {
+                        let msg = child.val();
+                        let div = document.createElement('div');
+                        div.style.cssText = "margin-bottom: 6px; word-break: break-all;";
+                        div.innerHTML = `<span style="color:var(--yellow); font-weight:bold;">[${msg.sender}]</span>: <span style="color:white;">${msg.text}</span>`;
+                        container.appendChild(div);
+                    });
+                    container.scrollTop = container.scrollHeight;
+                });
+            }
+        }
+
+        function closePublicChat() {
+            document.getElementById('public-chat-modal').style.display = 'none';
+            if(publicChatRef && db) {
+                db.ref('public_chat').off();
+            }
+        }
+
+        function sendPublicMessage() {
+            let input = document.getElementById('public-chat-input');
+            let text = input.value.trim();
+            if(!text || !db) return;
+            
+            db.ref('public_chat').push({
+                sender: currentUser,
+                text: text,
+                timestamp: Date.now()
+            });
+            input.value = "";
+        }
+
+        function openPrivateChat(friendName) {
+            document.getElementById('friends-modal').style.display = 'none';
+            activePrivateChatFriend = friendName;
+            document.getElementById('private-chat-title').innerText = `CHAT: ${friendName}`;
+            document.getElementById('private-chat-modal').style.display = 'block';
+            
+            let container = document.getElementById('private-chat-messages');
+            container.innerHTML = "Privát csatorna betöltése...";
+
+            if(db) {
+                let chatKey = [currentUser, friendName].sort().join('_');
+                privateChatRef = db.ref('private_chats/' + chatKey + '/messages').limitToLast(40);
+                privateChatRef.on('value', snapshot => {
+                    container.innerHTML = "";
+                    if(!snapshot.exists()) {
+                        container.innerHTML = "<p style='color:gray; text-align:center;'>Még nincsenek üzenetek köztetek.</p>";
+                        return;
+                    }
+                    snapshot.forEach(child => {
+                        let msg = child.val();
+                        let color = (msg.sender === currentUser) ? "var(--blue)" : "var(--yellow)";
+                        let div = document.createElement('div');
+                        div.style.cssText = "margin-bottom: 6px; word-break: break-all;";
+                        div.innerHTML = `<span style="color:${color}; font-weight:bold;">[${msg.sender}]</span>: <span style="color:white;">${msg.text}</span>`;
+                        container.appendChild(div);
+                    });
+                    container.scrollTop = container.scrollHeight;
+                });
+            }
+        }
+
+        function closePrivateChat() {
+            document.getElementById('private-chat-modal').style.display = 'none';
+            if(privateChatRef && db && activePrivateChatFriend) {
+                let chatKey = [currentUser, activePrivateChatFriend].sort().join('_');
+                db.ref('private_chats/' + chatKey + '/messages').off();
+            }
+            activePrivateChatFriend = null;
+        }
+
+        function sendPrivateMessage() {
+            let input = document.getElementById('private-chat-input');
+            let text = input.value.trim();
+            if(!text || !db || !activePrivateChatFriend) return;
+
+            let chatKey = [currentUser, activePrivateChatFriend].sort().join('_');
+            db.ref('private_chats/' + chatKey + '/messages').push({
+                sender: currentUser,
+                text: text,
+                timestamp: Date.now()
+            });
+            input.value = "";
+        }
+
         // --- BARÁT ÉS DUEL RENDSZER LOGIKA ---
         function openFriendsModal() {
             document.getElementById('friends-modal').style.display = 'block';
@@ -362,14 +477,27 @@
                         let statusColor = isOnline ? "#39ff14" : "gray";
                         div.innerHTML = `<span><b>${friendName}</b> (<span style="color:${statusColor}">${friendData.status || 'offline'}</span>)</span>`;
                         
+                        let btnContainer = document.createElement('div');
+                        btnContainer.style.display = "flex";
+                        btnContainer.style.gap = "5px";
+
+                        // Chat gomb minden barátnak
+                        let chatBtn = document.createElement('div');
+                        chatBtn.className = "btn";
+                        chatBtn.style.cssText = "width: auto; padding: 4px 10px; font-size: 0.8rem; margin: 0; border-color: var(--blue); color: var(--blue);";
+                        chatBtn.innerText = "CHAT";
+                        chatBtn.onclick = () => openPrivateChat(friendName);
+                        btnContainer.appendChild(chatBtn);
+
                         if(isOnline) {
                             let duelBtn = document.createElement('div');
                             duelBtn.className = "btn";
                             duelBtn.style.cssText = "width: auto; padding: 4px 10px; font-size: 0.8rem; margin: 0; border-color: var(--yellow); color: var(--yellow);";
                             duelBtn.innerText = "PÁRBAJ";
                             duelBtn.onclick = () => sendDuelInviteTo(friendName);
-                            div.appendChild(duelBtn);
+                            btnContainer.appendChild(duelBtn);
                         }
+                        div.appendChild(btnContainer);
                         container.appendChild(div);
                     });
                 });
@@ -387,7 +515,6 @@
                 ballX: 0.5, ballY: 0.5, p1Y: 0.5, p2Y: 0.5, score1: 0, score2: 0
             });
 
-            // Meghívó elküldése a barátnak
             db.ref('users/' + friendName + '/incomingInvite').set({
                 from: currentUser,
                 roomId: roomId,
