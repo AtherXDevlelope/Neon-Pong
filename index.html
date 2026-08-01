@@ -73,6 +73,7 @@
             <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
             <div class="btn" onclick="openPublicChat()" style="border-color: #39ff14; color: #39ff14;">[ PUBLIKUS CHAT ]</div>
+            <div class="btn" id="gfx-btn" onclick="toggleGraphics()" style="border-color: #ff8800; color: #ff8800;">[ GRAFIKA: MAGAS ]</div>
             <div class="btn" style="border-color: red; color: red;" onclick="logout()">[ KIJELENTKEZÉS ]</div>
         </div>
     </div>
@@ -242,7 +243,7 @@
             document.getElementById('db-status').style.color = "red";
         }
 
-        let currentUser = "", gameActive = false, fpsShow = false;
+        let currentUser = "", gameActive = false, fpsShow = true;
         let pScore = 0, bScore = 0, paddleColor = '#00f2ff', gfxMode = 'high', activeGameMode = 'single';
         let playerCoins = parseInt(localStorage.getItem('cyberPongCoins') || '500');
         let playerPowerups = JSON.parse(localStorage.getItem('cyberPongPowerups') || '{}');
@@ -260,10 +261,9 @@
         let coopLives = 3;
         let py1 = 100, py2 = 300, bossY = 150;
         
-        // Boss 15. wave labda megállító képesség időzítő
         let bossStopperActive = false;
         let bossStopperTimer = 0;
-        let bossStopperCooldown = 0;
+        let bossStopperCooldown = 30000;
 
         let keys = {};
         window.addEventListener('keydown', e => keys[e.key] = true);
@@ -298,6 +298,27 @@
             document.getElementById('player-coin-display').innerText = playerCoins;
             document.getElementById('shop-coin-val').innerText = playerCoins;
             localStorage.setItem('cyberPongCoins', playerCoins);
+        }
+
+        // --- GRAFIKA VÁLTÓ FUNKCIÓ A GYENGE GÉPEKHEZ ---
+        function toggleGraphics() {
+            let body = document.getElementById('core-body');
+            let btn = document.getElementById('gfx-btn');
+            if (gfxMode === 'high') {
+                gfxMode = 'low';
+                body.classList.remove('high-gfx');
+                body.classList.add('low-gfx');
+                btn.innerText = "[ GRAFIKA: ALACSONY (60 FPS) ]";
+                btn.style.borderColor = "#39ff14";
+                btn.style.color = "#39ff14";
+            } else {
+                gfxMode = 'high';
+                body.classList.remove('low-gfx');
+                body.classList.add('high-gfx');
+                btn.innerText = "[ GRAFIKA: MAGAS ]";
+                btn.style.borderColor = "#ff8800";
+                btn.style.color = "#ff8800";
+            }
         }
 
         function checkSession() {
@@ -387,7 +408,6 @@
             }
         }
 
-        // --- SHOP & SZUPERERŐK RENDSZER ---
         function openShopModal() {
             document.getElementById('shop-modal').style.display = 'block';
             updateCoinDisplay();
@@ -428,7 +448,6 @@
             alert("Sikeres vásárlás! Új szupererő aktiválva.");
         }
 
-        // --- CHAT RENDSZER (PUBLIKUS & PRIVÁT) ---
         function openPublicChat() {
             document.getElementById('public-chat-modal').style.display = 'block';
             let container = document.getElementById('public-chat-messages');
@@ -528,7 +547,6 @@
             input.value = "";
         }
 
-        // --- BARÁT ÉS DUEL RENDSZER LOGIKA ---
         function openFriendsModal() {
             document.getElementById('friends-modal').style.display = 'block';
             loadFriendsList();
@@ -673,11 +691,11 @@
             currentWave = 1;
             waveScore = 0;
             coopLives = 3;
-            if(playerPowerups.shield) coopLives += 2; // Pajzs szupererő extra élet
+            if(playerPowerups.shield) coopLives += 2;
             
             document.getElementById('tutorial-text').innerHTML = `
                 <p>• <b>SOLO BOSS MÓD (15 WAVE)</b></p>
-                <p>• Győzd le a főbosst 15 hullámkeresztül!</p>
+                <p>• Győzd le a főbosst 15 hullámon keresztül!</p>
                 <p>• Minden hullámért <b>50 Coin</b> jár, a 15. hullámért <b>500 Coin</b>!</p>
                 <p>• A 15. hullámban a Bossnak <b>Labda Megállító</b> képessége van (30mp időzítéssel)!</p>
             `;
@@ -805,13 +823,12 @@
             }
             gameActive = true; 
             
-            // Szupererők alkalmazása (Ütő méret & sebesség)
             ph = 100;
             if(playerPowerups.size) ph = 140;
 
             bossStopperActive = false;
             bossStopperTimer = Date.now();
-            bossStopperCooldown = 30000; // 30 másodperc
+            bossStopperCooldown = 30000;
 
             cvs.classList.remove('show-cursor');
             resetBall();
@@ -840,7 +857,6 @@
             });
         }
 
-        function toggleFPS() { fpsShow = !fpsShow; document.getElementById('fps-label').style.display = fpsShow ? 'block' : 'none'; }
         function resumeGame() { showView('screen-pong'); gameActive = true; cvs.classList.remove('show-cursor'); }
         function toggleFullscreen() { if (!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); }
 
@@ -878,28 +894,37 @@
             ball.vy = (Math.random() * 4 - 2); 
         }
 
+        let lastTime = performance.now();
+        let frameCount = 0;
+
         function loop() {
             if(!gameActive) return;
             
+            // FPS mérés és kijelzés frissítés
+            frameCount++;
+            let nowTime = performance.now();
+            if (nowTime - lastTime >= 1000) {
+                document.getElementById('fps-val').innerText = frameCount;
+                frameCount = 0;
+                lastTime = nowTime;
+            }
+
             ctx.fillStyle = "black"; ctx.fillRect(0, 0, cvs.width, cvs.height);
-            if(fpsShow) document.getElementById('fps-val').innerText = 60;
             
             if (activeGameMode === 'single') {
                 by += (ball.y - (by + ph/2)) * 0.10; 
                 processPhysics();
             } 
             else if (activeGameMode === 'solo_boss') {
-                // Boss AI sebesség növekedés hullámonként
                 let bossSpeedFactor = 0.05 + (currentWave * 0.006);
                 by += (ball.y - (by + ph/2)) * bossSpeedFactor;
                 if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
 
-                // 15. hullám: Boss labda megállító képesség (30 másodpercenként aktiválódik 3 mp-re)
                 if (currentWave === 15) {
                     let now = Date.now();
                     if (now - bossStopperTimer > bossStopperCooldown) {
                         bossStopperActive = true;
-                        setTimeout(() => { bossStopperActive = false; }, 3000); // 3 mp aktív idő
+                        setTimeout(() => { bossStopperActive = false; }, 3000);
                         bossStopperTimer = now;
                     }
                 }
@@ -983,12 +1008,12 @@
             if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
             if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
 
+            // Ha alacsony a grafika, teljesen kikapcsoljuk az árnyékokat a maximális FPS érdekében
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             if (activeGameMode === 'solo_boss') {
                 ctx.fillStyle = paddleColor; ctx.shadowColor = paddleColor; ctx.fillRect(30, py, pw, ph);
                 
-                // Ha a 15. hullámban a boss képessége aktív, vörösen villog
                 let bossColor = (currentWave === 15 && bossStopperActive) ? "#ff3131" : "#ff00ff";
                 ctx.fillStyle = bossColor; ctx.shadowColor = bossColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
                 
@@ -1051,7 +1076,6 @@
         }
 
         function processSoloBossPhysics() {
-            // Ha a 15. wave boss labda megállítója aktív, a labda sebessége 0-ra esik vissza mellette
             if (currentWave === 15 && bossStopperActive && ball.x > cvs.width - 250) {
                 ball.vx = 0;
                 ball.vy = 0;
@@ -1094,7 +1118,6 @@
 
             if(ball.x > cvs.width) {
                 waveScore++;
-                // Minden hullámért 50 coin, a 15. hullámért 500 coin jár!
                 let reward = (currentWave === 15) ? 500 : 50;
                 playerCoins += reward;
                 updateCoinDisplay();
@@ -1161,7 +1184,7 @@
 
             if(ball.x > cvs.width) {
                 waveScore++;
-                playerCoins += 50; // Coop hullám jutalom
+                playerCoins += 50;
                 updateCoinDisplay();
 
                 if(waveScore >= 3) {
