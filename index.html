@@ -809,7 +809,6 @@
         // Fogadó oldal ellenőrzése háttérben
         function listenForIncomingVoiceCalls() {
             if (!db || !currentUser) return;
-            // Egyszerűsített automatikus figyelés a barátok hívásaira
             db.ref('voice_signals').on('child_added', async snap => {
                 let callKey = snap.key;
                 if (callKey && callKey.includes(currentUser)) {
@@ -1108,7 +1107,7 @@
 
             cvs.classList.remove('show-cursor');
             resetBall();
-            loop();
+            requestAnimationFrame(loop);
         }
 
         function quitGame() {
@@ -1117,7 +1116,7 @@
                 roomRef.off();
                 roomRef.remove();
             }
-            if (document.fullscreenElement) document.exitFullscreen();
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
             showView('screen-main');
         }
 
@@ -1137,22 +1136,31 @@
             showView('screen-pong'); 
             gameActive = true; 
             cvs.classList.remove('show-cursor'); 
+            requestAnimationFrame(loop);
         }
 
         function toggleFullscreen() { 
-            if (!document.fullscreenElement) document.documentElement.requestFullscreen(); 
-            else document.exitFullscreen(); 
+            if (!document.fullscreenElement) document.documentElement.requestFullscreen().catch(() => {}); 
+            else document.exitFullscreen().catch(() => {}); 
         }
 
         window.addEventListener('keydown', e => { 
-            if(e.key === "Escape" && gameActive) { 
-                gameActive = false; 
-                showView('screen-pause'); 
-                cvs.classList.add('show-cursor'); 
+            if(e.key === "Escape") {
+                if (gameActive) {
+                    gameActive = false; 
+                    showView('screen-pause'); 
+                    cvs.classList.add('show-cursor'); 
+                } else {
+                    let pauseScreen = document.getElementById('screen-pause');
+                    if (pauseScreen.style.display === 'block') {
+                        resumeGame();
+                    }
+                }
             }
         });
         
         cvs.addEventListener('mousemove', e => { 
+            if (!gameActive) return;
             let sMultiplier = playerPowerups.speed ? 1.35 : 1.0;
             if (activeGameMode === 'single' || activeGameMode === 'solo_boss') {
                 py += (e.clientY - ph/2 - py) * (0.2 * sMultiplier);
@@ -1541,7 +1549,7 @@
         zene.addEventListener('ended', () => {
             aktualisZene = (aktualisZene + 1) % zeneLista.length;
             zene.src = zeneLista[aktualisZene];
-            if (!musicMutedManually) zene.play();
+            if (!musicMutedManually) zene.play().catch(() => {});
         });
 
         function zeneInditas() {
