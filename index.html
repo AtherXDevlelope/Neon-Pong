@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Minecraft Cyberpunk Ultimate Edition</title>
+    <!-- Firebase SDK linkek -->
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <style>
@@ -27,7 +28,6 @@
 
         .modal { display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(10, 10, 10, 0.95); border: 3px solid var(--pink); padding: 30px; z-index: 1000; box-shadow: 0 0 50px var(--pink); text-align: center; backdrop-filter: blur(5px); }
         
-        /* Teljes képernyős vászon */
         canvas { display: block; width: 100vw; height: 100vh; background: #000; cursor: none; position: absolute; top: 0; left: 0; z-index: 1; }
         .show-cursor { cursor: default !important; }
         
@@ -44,15 +44,17 @@
 
     <div id="fps-label" style="position:fixed; top:10px; left:10px; color:var(--yellow); display:none; z-index:2000;">FPS: <span id="fps-val">0</span></div>
 
+    <!-- 1. LOGIN SCREEN -->
     <div id="screen-auth" class="view">
         <div id="ui-container">
             <h1 class="glitch">SYSTEM_LOGIN</h1>
             <input type="text" id="username-input" class="auth-input" placeholder="CYBER_NEV..." maxlength="12" onkeypress="if(event.key === 'Enter') startSystem()">
             <div class="btn" onclick="startSystem()">KONNEKTÁLÁS</div>
-            <p id="db-status" style="color:var(--pink); font-size: 0.8rem; margin-top: 15px;">RENDSZER: KERESÉS...</p>
+            <p id="db-status" style="color:var(--pink); font-size: 0.8rem; margin-top: 15px;">RENDSZER: KAPCSOLÓDÁS...</p>
         </div>
     </div>
 
+    <!-- 2. FŐMENÜ -->
     <div id="screen-main" class="view" style="display:none;">
         <div id="ui-container">
             <p id="user-welcome" style="color:var(--pink); margin-bottom: 5px; font-weight: bold; text-shadow: 0 0 10px var(--pink);"></p>
@@ -61,31 +63,36 @@
             <div class="btn" onclick="openLeaderboard()">[ RANGLISTA ]</div>
             <div class="btn" onclick="document.getElementById('custom-modal').style.display='block'">[ CUSTOMIZE ]</div>
             <div class="btn" onclick="showView('screen-settings')">[ SETTINGS_CORE ]</div>
+            <div class="btn" style="border-color: red; color: red;" onclick="logout()">[ KIJELENTKEZÉS ]</div>
         </div>
     </div>
 
+    <!-- START ALMENÜ -->
     <div id="screen-start" class="view" style="display:none;">
         <div id="ui-container">
             <h2 style="color:var(--pink); text-shadow: 0 0 10px var(--pink);">SELECT_MODE</h2>
             <div class="btn" onclick="showTutorial('single')">1. EGYJÁTÉKOS (Vs Bot)</div>
-            <div class="btn" onclick="findMultiplayerMatch()" style="border-color: var(--yellow); color: var(--yellow);">2. ONLINE TÖBBJÁTÉKOS</div>
+            <div class="btn" onclick="findMultiplayerMatch()" style="border-color: var(--yellow); color: var(--yellow);">2. ONLINE JÁTÉKOSKERESŐ</div>
             <div class="btn" onclick="showTutorial('local')">3. LOCAL JÁTÉKOS (P1 vs P2)</div>
             <div class="btn" style="border-color:gray; color:gray; box-shadow: none;" onclick="showView('screen-main')">VISSZA</div>
         </div>
     </div>
 
+    <!-- VÁRAKOZÓ MODAL (MATCHMAKING) -->
     <div id="waiting-modal" class="modal">
-        <h2 style="color:var(--yellow);" class="glitch">MATCHMAKING...</h2>
-        <p>Várakozás egy másik játékosra...</p>
+        <h2 style="color:var(--yellow);" class="glitch">JÁTÉKOSKERESŐ</h2>
+        <p id="matchmaking-status">Szoba keresése a hálózatban...</p>
         <div class="btn" onclick="cancelMatchmaking()">MÉGSE</div>
     </div>
 
+    <!-- TUTORIAL MODAL -->
     <div id="tutorial-modal" class="modal">
         <h2 style="color:var(--yellow)">>> RENDSZER_OKTATÁS <<</h2>
         <div id="tutorial-text" style="text-align: left; margin-bottom: 20px;"></div>
         <div class="btn" onclick="initPong()">JÁTÉK INDÍTÁSA</div>
     </div>
 
+    <!-- CUSTOMIZE MODAL -->
     <div id="custom-modal" class="modal">
         <h3 style="color:var(--blue)">ÜTŐ SZÍNE</h3>
         <div class="color-opt" style="background:#00f2ff;" onclick="setPaddleColor('#00f2ff')"></div>
@@ -93,7 +100,7 @@
         <div class="color-opt" style="background:#39ff14;" onclick="setPaddleColor('#39ff14')"></div>
         <div class="color-opt" style="background:#ff3131;" onclick="setPaddleColor('#ff3131')"></div>
         <br><br>
-        <div class="btn" style="border-color:gray; color:gray; box-shadow:none;" onclick="document.getElementById('custom-modal').style.display='none'">BEZÁRÁS</div>
+        <div class="btn" style="border-color:gray; color:gray; box-shadow:none;" onclick="document.getElementById('custom-modal').style.display='none'">MENTÉS ÉS BEZÁRÁS</div>
     </div>
 
     <div id="leaderboard-modal" class="modal">
@@ -102,10 +109,11 @@
         <div class="btn" style="border-color:gray; color:gray; box-shadow:none;" onclick="document.getElementById('leaderboard-modal').style.display='none'">BEZÁRÁS</div>
     </div>
 
+    <!-- PONG JÁTÉK -->
     <div id="screen-pong" class="view" style="display:none;">
         <div id="hud">
             <span id="p1-name">P1</span>: <span id="ps">0</span> | <span id="p2-name" style="color:var(--pink)">P2</span>: <span id="bs">0</span>
-            <div style="font-size: 1rem; color: gray; margin-top: 10px;">[ ESC - SZÜNET / KILÉPÉS ]</div>
+            <div style="font-size: 1rem; color: gray; margin-top: 5px;">[ ESC - SZÜNET ]</div>
         </div>
         <canvas id="pongCanvas"></canvas>
     </div>
@@ -120,6 +128,7 @@
         </div>
     </div>
 
+    <!-- PAUSE MENÜ -->
     <div id="screen-pause" class="view" style="display:none; position:fixed; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:5000;">
         <div id="ui-container">
             <h1 style="color:var(--pink); text-shadow: 0 0 15px var(--pink);">SZÜNET_RENDSZER</h1>
@@ -151,7 +160,6 @@
         let currentUser = "", gameActive = false, fpsShow = false;
         let pScore = 0, bScore = 0, paddleColor = '#00f2ff', gfxMode = 'high', activeGameMode = 'single';
         
-        // Multi változók
         let roomId = null;
         let isHost = false;
         let roomRef = null;
@@ -163,14 +171,12 @@
         const cvs = document.getElementById("pongCanvas");
         const ctx = cvs.getContext("2d");
         
-        // Dinamikus változók
         let ball = { x: 400, y: 200, vx: 0, vy: 0, r: 10, baseSpeed: 9, maxSpeed: 20 };
         let py = 150, by = 150, ph = 120, pw = 15, paddleSpeed = 10;
 
         function resizeCanvas() {
             cvs.width = window.innerWidth;
             cvs.height = window.innerHeight;
-            // Ha pályán kívül kerültek volna a dolgok az átméretezéstől
             if(py > cvs.height - ph) py = cvs.height - ph;
             if(by > cvs.height - ph) by = cvs.height - ph;
         }
@@ -178,18 +184,18 @@
 
         function showView(id) {
             document.querySelectorAll('.view').forEach(v => v.style.display = 'none');
-            document.getElementById(id).style.display = 'block'; // Canvas miatt jobb a block, az absolute HUD megoldja a pozíciót
+            document.getElementById(id).style.display = 'block';
             if(id !== 'screen-pong' && id !== 'screen-pause') {
                 document.getElementById('ui-container').style.display = 'flex';
             }
         }
 
+        // --- MENTÉSI ÉS BEJELENTKEZÉSI RENDSZER ---
         function checkSession() {
             let sessionUser = sessionStorage.getItem('activeUser');
             if (sessionUser) { 
                 currentUser = sessionUser; 
-                showView('screen-main'); 
-                document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser; 
+                loadUserDataLocallyOrCloud();
             }
         }
 
@@ -198,8 +204,52 @@
             if(name.length < 3) return alert("Minimum 3 karakter!");
             currentUser = name.toUpperCase();
             sessionStorage.setItem('activeUser', currentUser);
+            
+            // Mentés és Profil betöltés a Firebase-ből
+            if(db) {
+                db.ref('users/' + currentUser).once('value').then(snapshot => {
+                    if(snapshot.exists()) {
+                        let data = snapshot.val();
+                        if(data.paddleColor) paddleColor = data.paddleColor;
+                    } else {
+                        // Új felhasználó mentése alapértelmezett adatokkal
+                        db.ref('users/' + currentUser).set({
+                            name: currentUser,
+                            paddleColor: paddleColor,
+                            lastLogin: Date.now()
+                        });
+                    }
+                });
+            }
+            
             document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser;
             showView('screen-main');
+        }
+
+        function loadUserDataLocallyOrCloud() {
+            if(db) {
+                db.ref('users/' + currentUser).once('value').then(snapshot => {
+                    if(snapshot.exists() && snapshot.val().paddleColor) {
+                        paddleColor = snapshot.val().paddleColor;
+                    }
+                });
+            }
+            document.getElementById('user-welcome').innerText = "AZONOSÍTVA: " + currentUser;
+            showView('screen-main');
+        }
+
+        function logout() {
+            sessionStorage.removeItem('activeUser');
+            currentUser = "";
+            showView('screen-auth');
+        }
+
+        function setPaddleColor(c) { 
+            paddleColor = c; 
+            document.getElementById('custom-modal').style.display = 'none';
+            if(db && currentUser) {
+                db.ref('users/' + currentUser).update({ paddleColor: paddleColor });
+            }
         }
 
         function showTutorial(mode) { 
@@ -217,17 +267,24 @@
             document.getElementById('tutorial-modal').style.display = 'block'; 
         }
 
-        // --- MULTIPLAYER LOGIKA ---
+        // --- MULTIPLAYER JÁTÉKOSKERESŐ (MATCHMAKING) ---
         function findMultiplayerMatch() {
-            if(!db) return alert("Offline módban nem elérhető a többjátékos mód!");
+            if(!db) return alert("Offline módban nem elérhető a játékoskereső!");
             activeGameMode = 'multi';
+            document.getElementById('matchmaking-status').innerText = "Üres szoba keresése...";
             document.getElementById('waiting-modal').style.display = 'block';
             
+            // Keresünk egy várakozó szobát
             db.ref('lobbies').orderByChild('status').equalTo('waiting').limitToFirst(1).once('value', snapshot => {
                 if(snapshot.exists()) {
-                    // Van várakozó szoba -> Csatlakozás (Kliens / P2)
                     let rooms = snapshot.val();
                     roomId = Object.keys(rooms)[0];
+                    
+                    // Ha a saját szobánkat találnánk meg, ignoráljuk
+                    if(rooms[roomId].p1Name === currentUser) {
+                        return;
+                    }
+
                     isHost = false;
                     roomRef = db.ref('lobbies/' + roomId);
                     
@@ -236,7 +293,7 @@
                     document.getElementById('p2-name').innerText = currentUser;
                     startGameMulti();
                 } else {
-                    // Nincs szoba -> Létrehozás (Host / P1)
+                    // Nincs nyitott szoba -> Létrehozunk egyet (Host)
                     isHost = true;
                     let newRoom = db.ref('lobbies').push();
                     roomId = newRoom.key;
@@ -247,7 +304,9 @@
                         ballX: 0.5, ballY: 0.5, p1Y: 0.5, p2Y: 0.5, score1: 0, score2: 0
                     });
 
-                    // Figyeljük, ha valaki csatlakozik
+                    document.getElementById('matchmaking-status').innerText = "Szoba létrehozva. Várakozás másik játékosra...";
+
+                    // Figyeljük, mikor csatlakozik valaki
                     roomRef.on('value', snap => {
                         let data = snap.val();
                         if(data && data.status === 'playing' && document.getElementById('waiting-modal').style.display === 'block') {
@@ -262,7 +321,10 @@
 
         function cancelMatchmaking() {
             document.getElementById('waiting-modal').style.display = 'none';
-            if(roomRef && isHost) { roomRef.remove(); roomRef.off(); }
+            if(roomRef && isHost) { 
+                roomRef.remove(); 
+                roomRef.off(); 
+            }
             roomId = null;
         }
 
@@ -271,16 +333,12 @@
             initPong();
         }
 
-        // --- PONG INDÍTÁSA ---
         function initPong() {
             document.getElementById('tutorial-modal').style.display = 'none';
             showView('screen-pong');
             
-            // Teljes képernyő kérése
             if (!document.fullscreenElement) {
-                document.documentElement.requestFullscreen().catch(() => {
-                    console.log("A böngésző blokkolta az automatikus teljes képernyőt.");
-                });
+                document.documentElement.requestFullscreen().catch(() => {});
             }
             resizeCanvas();
 
@@ -299,14 +357,13 @@
         function quitGame() {
             gameActive = false;
             if(activeGameMode === 'multi' && roomRef) {
-                roomRef.remove(); // Szoba bezárása kilépéskor
+                roomRef.remove();
                 roomRef.off();
             }
             if (document.fullscreenElement) document.exitFullscreen();
             showView('screen-main');
         }
 
-        // ... Ranglista, Beállítások ...
         function openLeaderboard() {
             document.getElementById('leaderboard-modal').style.display = 'block';
             if(!db) return document.getElementById('leaderboard-content').innerText = "Offline.";
@@ -314,11 +371,11 @@
                 let html = ""; let players = [];
                 snapshot.forEach(child => { players.push(child.val()); });
                 if(players.length === 0) html = "Nincs adat.";
-                else players.reverse().forEach((p, i) => { html += `<div>${i+1}. <span style="color:white">${p.name}</span> - ${p.score} W</div>`; });
+                else players.reverse().forEach((p, i) => { html += `<div>${i+1}. <span style="color:white">${p.name}</span> - ${p.score} GYŐZELEM</div>`; });
                 document.getElementById('leaderboard-content').innerHTML = html;
             });
         }
-        function setPaddleColor(c) { paddleColor = c; document.getElementById('custom-modal').style.display = 'none'; }
+
         function applyGfx(lv) { gfxMode = lv; document.getElementById('core-body').className = lv + '-gfx'; }
         function toggleFPS() { fpsShow = !fpsShow; document.getElementById('fps-label').style.display = fpsShow ? 'block' : 'none'; }
         function resumeGame() { showView('screen-pong'); gameActive = true; if(activeGameMode!=='local') cvs.classList.remove('show-cursor'); }
@@ -339,7 +396,6 @@
                 if(isHost) py = e.clientY - ph/2;
                 else by = e.clientY - ph/2;
             }
-            // Pályán tartás
             if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
             if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
         });
@@ -352,7 +408,6 @@
             ball.vy = (Math.random() * 4 - 2); 
         }
 
-        // --- FŐ JÁTÉK CIKLUS ---
         function loop() {
             if(!gameActive) return;
             
@@ -360,7 +415,6 @@
             if(fpsShow) document.getElementById('fps-val').innerText = 60;
             
             if (activeGameMode === 'single') {
-                // OkosBot AI dinamikus képernyőhöz skálázva
                 by += (ball.y - (by + ph/2)) * 0.10; 
                 processPhysics();
             } 
@@ -372,23 +426,19 @@
                 processPhysics();
             }
             else if (activeGameMode === 'multi') {
-                // Multi esetén: Host számol fizikát, Kliens csak adatot fogad/küld
                 if (isHost) {
                     processPhysics();
-                    // Százalékos eltolás küldése (hogy felbontásfüggetlen legyen)
                     roomRef.update({
                         ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
                         p1Y: py / cvs.height, score1: pScore, score2: bScore
                     });
                     
-                    // Kliens ütőjének beolvasása (on listenerrel jobb lenne, de 60fps-nél a get() egy webrendszerben overkill lehet, Firebase valós idejű sync-jét használjuk)
                     roomRef.once('value').then(snap => {
                         let d = snap.val();
-                        if(!d) quitGame(); // Ha a másik kilépett
+                        if(!d) quitGame();
                         else if (d.p2Y !== undefined) by = d.p2Y * cvs.height;
                     });
                 } else {
-                    // Kliens (P2)
                     roomRef.update({ p2Y: by / cvs.height });
                     
                     roomRef.once('value').then(snap => {
@@ -405,17 +455,14 @@
                 }
             }
 
-            // Biztosítás, hogy az ütők ne csússzanak ki
             if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
             if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
 
-            // --- RAJZOLÁS ---
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             let p1DrawColor = paddleColor;
             let p2DrawColor = "#ff00ff";
 
-            // Ha Multi és Kliens vagyunk, a jobb oldalon irányítunk (by), de a színünk legyen a mi választottunk
             if(activeGameMode === 'multi' && !isHost) {
                 p2DrawColor = paddleColor;
                 p1DrawColor = "#ff00ff";
@@ -424,11 +471,9 @@
             ctx.fillStyle = p1DrawColor; ctx.shadowColor = p1DrawColor; ctx.fillRect(30, py, pw, ph);
             ctx.fillStyle = p2DrawColor; ctx.shadowColor = p2DrawColor; ctx.fillRect(cvs.width - 30 - pw, by, pw, ph);
             
-            // Középvonal
             ctx.fillStyle = "rgba(255, 255, 255, 0.1)"; ctx.shadowBlur = 0;
             for(let i=0; i<cvs.height; i+=40) { ctx.fillRect(cvs.width/2 - 2, i, 4, 20); }
             
-            // Labda
             ctx.fillStyle = "#ffff00"; ctx.shadowColor = "#ffff00"; 
             ctx.shadowBlur = (gfxMode === 'high') ? 15 : 0;
             ctx.beginPath(); ctx.arc(ball.x, ball.y, ball.r, 0, Math.PI*2); ctx.fill();
@@ -447,7 +492,6 @@
                 ball.y = ball.y - ball.r <= 0 ? ball.r + 1 : cvs.height - ball.r - 1; 
             }
             
-            // P1 kollízió (Bal) - Dinamikus távolság 30px a szélétől
             if(ball.x - ball.r < 30 + pw && ball.y > py && ball.y < py + ph && ball.vx < 0) {
                 let hitPoint = (ball.y - (py + ph/2)) / (ph/2); 
                 let angle = hitPoint * (Math.PI / 4); 
@@ -457,7 +501,6 @@
                 ball.vy = currentSpeed * Math.sin(angle);
             }
             
-            // P2 kollízió (Jobb)
             if(ball.x + ball.r > cvs.width - 30 - pw && ball.y > by && ball.y < by + ph && ball.vx > 0) {
                 let hitPoint = (ball.y - (by + ph/2)) / (ph/2);
                 let angle = hitPoint * (Math.PI / 4);
@@ -483,7 +526,7 @@
                 alert(win ? "JÁTÉKOS 1 GYŐZÖTT!" : "JÁTÉKOS 2 GYŐZÖTT!");
             } else if (activeGameMode === 'multi') {
                 if(isHost) alert(win ? "GYŐZELEM!" : "VESZTETTÉL!");
-                else alert(win ? "VESZTETTÉL!" : "GYŐZELEM!"); // Kliens szemszöge fordított pontozásban
+                else alert(win ? "VESZTETTÉL!" : "GYŐZELEM!");
                 if(roomRef) { roomRef.remove(); roomRef.off(); roomId = null; }
             } else {
                 alert(win ? "GYŐZELEM! A RENDSZER FELTÖRVE." : "VESZTETTÉL! KAPCSOLAT MEGSZAKADT.");
