@@ -190,9 +190,9 @@
             }
         }
 
-        // --- MENTÉSI ÉS BEJELENTKEZÉSI RENDSZER ---
+        // --- MENTÉSI ÉS BEJELENTKEZÉSI RENDSZER (LOCALSTORAGE) ---
         function checkSession() {
-            let sessionUser = sessionStorage.getItem('activeUser');
+            let sessionUser = localStorage.getItem('activeUser');
             if (sessionUser) { 
                 currentUser = sessionUser; 
                 loadUserDataLocallyOrCloud();
@@ -203,16 +203,14 @@
             let name = document.getElementById('username-input').value.trim();
             if(name.length < 3) return alert("Minimum 3 karakter!");
             currentUser = name.toUpperCase();
-            sessionStorage.setItem('activeUser', currentUser);
+            localStorage.setItem('activeUser', currentUser);
             
-            // Mentés és Profil betöltés a Firebase-ből
             if(db) {
                 db.ref('users/' + currentUser).once('value').then(snapshot => {
                     if(snapshot.exists()) {
                         let data = snapshot.val();
                         if(data.paddleColor) paddleColor = data.paddleColor;
                     } else {
-                        // Új felhasználó mentése alapértelmezett adatokkal
                         db.ref('users/' + currentUser).set({
                             name: currentUser,
                             paddleColor: paddleColor,
@@ -239,7 +237,7 @@
         }
 
         function logout() {
-            sessionStorage.removeItem('activeUser');
+            localStorage.removeItem('activeUser');
             currentUser = "";
             showView('screen-auth');
         }
@@ -274,13 +272,11 @@
             document.getElementById('matchmaking-status').innerText = "Üres szoba keresése...";
             document.getElementById('waiting-modal').style.display = 'block';
             
-            // Keresünk egy várakozó szobát
             db.ref('lobbies').orderByChild('status').equalTo('waiting').limitToFirst(1).once('value', snapshot => {
                 if(snapshot.exists()) {
                     let rooms = snapshot.val();
                     roomId = Object.keys(rooms)[0];
                     
-                    // Ha a saját szobánkat találnánk meg, ignoráljuk
                     if(rooms[roomId].p1Name === currentUser) {
                         return;
                     }
@@ -293,7 +289,6 @@
                     document.getElementById('p2-name').innerText = currentUser;
                     startGameMulti();
                 } else {
-                    // Nincs nyitott szoba -> Létrehozunk egyet (Host)
                     isHost = true;
                     let newRoom = db.ref('lobbies').push();
                     roomId = newRoom.key;
@@ -306,7 +301,6 @@
 
                     document.getElementById('matchmaking-status').innerText = "Szoba létrehozva. Várakozás másik játékosra...";
 
-                    // Figyeljük, mikor csatlakozik valaki
                     roomRef.on('value', snap => {
                         let data = snap.val();
                         if(data && data.status === 'playing' && document.getElementById('waiting-modal').style.display === 'block') {
