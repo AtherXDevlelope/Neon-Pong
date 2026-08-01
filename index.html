@@ -47,7 +47,7 @@
 </head>
 <body id="core-body" class="high-gfx" onload="checkSession()">
 
-    <div id="fps-label" style="position:fixed; top:10px; left:10px; color:var(--yellow); display:none; z-index:2000;">FPS: <span id="fps-val">0</span></div>
+    <div id="fps-label" style="position:fixed; top:10px; left:10px; color:var(--yellow); display:block; z-index:2000;">FPS: <span id="fps-val">0</span></div>
 
     <!-- 1. LOGIN SCREEN -->
     <div id="screen-auth" class="view">
@@ -251,6 +251,7 @@
         let roomId = null;
         let isHost = false;
         let roomRef = null;
+        let remoteData = {}; // Optimalizált multi-data cache
         let pendingDuelInvite = null;
         let activePrivateChatFriend = null;
         let publicChatRef = null;
@@ -300,7 +301,6 @@
             localStorage.setItem('cyberPongCoins', playerCoins);
         }
 
-        // --- GRAFIKA VÁLTÓ FUNKCIÓ A GYENGE GÉPEKHEZ ---
         function toggleGraphics() {
             let body = document.getElementById('core-body');
             let btn = document.getElementById('gfx-btn');
@@ -641,6 +641,7 @@
             roomRef.on('value', snap => {
                 let data = snap.val();
                 if(data && data.status === 'playing' && document.getElementById('waiting-modal').style.display === 'block') {
+                    roomRef.off();
                     activeGameMode = 'multi';
                     startGameMulti();
                 }
@@ -741,6 +742,7 @@
                     roomRef.on('value', snap => {
                         let data = snap.val();
                         if(data && data.status === 'playing' && document.getElementById('waiting-modal').style.display === 'block') {
+                            roomRef.off();
                             startGameMulti();
                         }
                     });
@@ -787,6 +789,7 @@
                     roomRef.on('value', snap => {
                         let data = snap.val();
                         if(data && data.status === 'playing' && document.getElementById('waiting-modal').style.display === 'block') {
+                            roomRef.off();
                             startGameMulti();
                         }
                     });
@@ -805,6 +808,19 @@
 
         function startGameMulti() {
             document.getElementById('waiting-modal').style.display = 'none';
+            
+            // OPTIMALIZÁLT HÁTTÉRFIGYELŐ A LAGGELÉS ELKERÜLÉSÉRE
+            if (roomRef) {
+                roomRef.on('value', snap => {
+                    let d = snap.val();
+                    if (!d) {
+                        quitGame();
+                    } else {
+                        remoteData = d;
+                    }
+                });
+            }
+            
             initPong();
         }
 
@@ -838,8 +854,8 @@
         function quitGame() {
             gameActive = false;
             if((activeGameMode === 'multi' || activeGameMode === 'coop_boss') && roomRef) {
-                roomRef.remove();
                 roomRef.off();
+                roomRef.remove();
             }
             if (document.fullscreenElement) document.exitFullscreen();
             showView('screen-main');
@@ -900,7 +916,6 @@
         function loop() {
             if(!gameActive) return;
             
-            // FPS mérés és kijelzés frissítés
             frameCount++;
             let nowTime = performance.now();
             if (nowTime - lastTime >= 1000) {
@@ -945,26 +960,18 @@
                         ballX: ball.x / cvs.width, ballY: ball.y / cvs.height,
                         p1Y: py / cvs.height, score1: pScore, score2: bScore
                     });
-                    
-                    roomRef.once('value').then(snap => {
-                        let d = snap.val();
-                        if(!d) quitGame();
-                        else if (d.p2Y !== undefined) by = d.p2Y * cvs.height;
-                    });
+                    if (remoteData.p2Y !== undefined) {
+                        by = remoteData.p2Y * cvs.height;
+                    }
                 } else {
                     roomRef.update({ p2Y: by / cvs.height });
-                    
-                    roomRef.once('value').then(snap => {
-                        let d = snap.val();
-                        if(!d) quitGame();
-                        else {
-                            ball.x = d.ballX * cvs.width;
-                            ball.y = d.ballY * cvs.height;
-                            py = d.p1Y * cvs.height;
-                            pScore = d.score1;
-                            bScore = d.score2;
-                        }
-                    });
+                    if (remoteData.ballX !== undefined) {
+                        ball.x = remoteData.ballX * cvs.width;
+                        ball.y = remoteData.ballY * cvs.height;
+                        py = remoteData.p1Y * cvs.height;
+                        pScore = remoteData.score1;
+                        bScore = remoteData.score2;
+                    }
                 }
             }
             else if (activeGameMode === 'coop_boss') {
@@ -981,34 +988,27 @@
                         wave: currentWave, waveScore: waveScore, lives: coopLives
                     });
 
-                    roomRef.once('value').then(snap => {
-                        let d = snap.val();
-                        if(!d) quitGame();
-                        else if (d.p2Y !== undefined) py2 = d.p2Y * cvs.height;
-                    });
+                    if (remoteData.p2Y !== undefined) {
+                        py2 = remoteData.p2Y * cvs.height;
+                    }
                 } else {
                     roomRef.update({ p2Y: py2 / cvs.height });
 
-                    roomRef.once('value').then(snap => {
-                        let d = snap.val();
-                        if(!d) quitGame();
-                        else {
-                            ball.x = d.ballX * cvs.width;
-                            ball.y = d.ballY * cvs.height;
-                            py1 = d.p1Y * cvs.height;
-                            by = d.bossY * cvs.height;
-                            currentWave = d.wave;
-                            waveScore = d.waveScore;
-                            coopLives = d.lives;
-                        }
-                    });
+                    if (remoteData.ballX !== undefined) {
+                        ball.x = remoteData.ballX * cvs.width;
+                        ball.y = remoteData.ballY * cvs.height;
+                        py1 = remoteData.p1Y * cvs.height;
+                        by = remoteData.bossY * cvs.height;
+                        currentWave = remoteData.wave || 1;
+                        waveScore = remoteData.waveScore || 0;
+                        coopLives = remoteData.lives || 3;
+                    }
                 }
             }
 
             if(py < 0) py = 0; if(py > cvs.height - ph) py = cvs.height - ph;
             if(by < 0) by = 0; if(by > cvs.height - ph) by = cvs.height - ph;
 
-            // Ha alacsony a grafika, teljesen kikapcsoljuk az árnyékokat a maximális FPS érdekében
             ctx.shadowBlur = (gfxMode === 'high') ? 20 : 0;
             
             if (activeGameMode === 'solo_boss') {
@@ -1208,13 +1208,13 @@
         
         function finish(win) {
             gameActive = false;
+            if(roomRef) { roomRef.off(); roomRef.remove(); roomId = null; }
             if(activeGameMode === 'local') {
                 alert(win ? "JÁTÉKOS 1 GYŐZÖTT!" : "JÁTÉKOS 2 GYŐZÖTT!");
             } else if (activeGameMode === 'multi') {
                 if(isHost) alert(win ? "GYŐZELEM! (+200 🪙)" : "VESZTETTÉL!");
                 else alert(win ? "VESZTETTÉL!" : "GYŐZELEM! (+200 🪙)");
                 if(win) { playerCoins += 200; updateCoinDisplay(); }
-                if(roomRef) { roomRef.remove(); roomRef.off(); roomId = null; }
             } else {
                 alert(win ? "GYŐZELEM! A RENDSZER FELTÖRVE. (+300 🪙)" : "VESZTETTÉL! KAPCSOLAT MEGSZAKADT.");
                 if(win) {
@@ -1234,6 +1234,7 @@
 
         function finishSoloBoss(win) {
             gameActive = false;
+            if(roomRef) { roomRef.off(); roomRef.remove(); roomId = null; }
             if(win) {
                 alert("GRATULÁLTOK! MIND A 15 HULLÁMOT TELJESÍTETTÉTEK ÉS LEGYŐZTÉTEK A BOSS LABDA MEGÁLLÍTÓJÁT IS! (+1000 🪙)");
                 playerCoins += 1000;
@@ -1253,6 +1254,7 @@
 
         function finishCoop(win) {
             gameActive = false;
+            if(roomRef) { roomRef.off(); roomRef.remove(); roomId = null; }
             if(win) {
                 alert("GRATULÁLTOK! MIND A 15 HULLÁMOT TELJESÍTETTÉTEK! (+800 🪙)");
                 playerCoins += 800;
@@ -1260,7 +1262,6 @@
             } else {
                 alert("GAME OVER! A BOSS LEGYŐZÖTT TITEKET A(Z) " + currentWave + ". HULLÁMBAN.");
             }
-            if(roomRef) { roomRef.remove(); roomRef.off(); roomId = null; }
             if (document.fullscreenElement) document.exitFullscreen();
             showView('screen-main');
         }
